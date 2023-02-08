@@ -69,10 +69,14 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.util.concurrent.ExecutionError;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static io.cassandrareaper.jmx.MetricsProxy.convertToGenericMetrics;
+import static io.cassandrareaper.jmx.MetricsProxy.updateGenericMetricAttribute;
 
 
 public final class ClusterFacade {
@@ -280,6 +284,12 @@ public final class ClusterFacade {
           () -> getRangeToEndpointMapImpl(cluster, keyspace));
     } catch (ExecutionException ex) {
       throw new ReaperException(ex);
+    } catch (ExecutionError ex) {
+      if ((ex.getCause() instanceof AssertionError)) {
+        throw new ReaperException(String.valueOf(ex));
+      } else {
+        throw ex;
+      }
     }
   }
 
@@ -543,7 +553,7 @@ public final class ClusterFacade {
       if (nodeIsAccessibleThroughJmx(nodeDc, node.getHostname())) {
         MetricsProxy metricsProxy = MetricsProxy.create(connect(node));
         return convertToMetricsHistogram(
-            MetricsProxy.convertToGenericMetrics(metricsProxy.collectLatencyMetrics(), node));
+            convertToGenericMetrics(metricsProxy.collectLatencyMetrics(), node));
       } else {
         // We look for metrics in the last two time based partitions to make sure we get a result
         return convertToMetricsHistogram(((IDistributedStorage)context.storage)
@@ -572,7 +582,7 @@ public final class ClusterFacade {
       String nodeDc = getDatacenter(node.getCluster().get(), node.getHostname());
       if (nodeIsAccessibleThroughJmx(nodeDc, node.getHostname())) {
         MetricsProxy proxy = MetricsProxy.create(connect(node));
-        return convertToDroppedMessages(MetricsProxy.convertToGenericMetrics(proxy.collectDroppedMessages(), node));
+        return convertToDroppedMessages(convertToGenericMetrics(proxy.collectDroppedMessages(), node));
       } else {
         return convertToDroppedMessages(((IDistributedStorage)context.storage)
             .getMetrics(
@@ -596,7 +606,7 @@ public final class ClusterFacade {
     for (Entry<String, List<GenericMetric>> pool : metricsByScope.entrySet()) {
       DroppedMessages.Builder builder = DroppedMessages.builder().withName(pool.getKey());
       for (GenericMetric stat : pool.getValue()) {
-        builder = MetricsProxy.updateGenericMetricAttribute(stat, builder);
+        builder = updateGenericMetricAttribute(stat, builder);
       }
       droppedMessages.add(builder.build());
     }
@@ -615,7 +625,7 @@ public final class ClusterFacade {
       String nodeDc = getDatacenter(node.getCluster().get(), node.getHostname());
       if (nodeIsAccessibleThroughJmx(nodeDc, node.getHostname())) {
         MetricsProxy proxy = MetricsProxy.create(connect(node));
-        return convertToThreadPoolStats(MetricsProxy.convertToGenericMetrics(proxy.collectTpStats(), node));
+        return convertToThreadPoolStats(convertToGenericMetrics(proxy.collectTpStats(), node));
       } else {
         return convertToThreadPoolStats(((IDistributedStorage)context.storage)
             .getMetrics(
@@ -639,7 +649,7 @@ public final class ClusterFacade {
     for (Entry<String, List<GenericMetric>> pool : metricsByScope.entrySet()) {
       ThreadPoolStat.Builder builder = ThreadPoolStat.builder().withName(pool.getKey());
       for (GenericMetric stat : pool.getValue()) {
-        builder = MetricsProxy.updateGenericMetricAttribute(stat, builder);
+        builder = updateGenericMetricAttribute(stat, builder);
       }
       tpstats.add(builder.build());
     }
@@ -666,7 +676,7 @@ public final class ClusterFacade {
                 .withName(metricByScope.getKey())
                 .withType(metricByName.getKey());
         for (GenericMetric stat : metricByName.getValue()) {
-          builder = MetricsProxy.updateGenericMetricAttribute(stat, builder);
+          builder = updateGenericMetricAttribute(stat, builder);
         }
         histograms.add(builder.build());
       }
