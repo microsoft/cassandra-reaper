@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
@@ -214,7 +215,6 @@ public class CassandraRepairRunDao implements IRepairRunDao {
         nbRanges = 0;
       }
     }
-    assert cassRepairUnitDao.getRepairUnit(newRepairRun.getRepairUnitId()).getIncrementalRepair() == isIncremental;
 
     futures.add(this.session.executeAsync(repairRunBatch));
     futures.add(
@@ -395,15 +395,14 @@ public class CassandraRepairRunDao implements IRepairRunDao {
                 )
         )
     );
+
     // Defuture the repair_run rows and build the strongly typed RepairRun objects from the contents.
     return repairRunFutures
         .stream()
-        .map(
-            row -> {
-              Row extractedRow = row.getUninterruptibly().one();
-              return buildRepairRunFromRow(extractedRow, extractedRow.getUUID("id"));
-            }
-        ).collect(Collectors.toList());
+        .map(row -> row.getUninterruptibly().one())
+        .filter(Objects::nonNull)
+        .map(extractedRow -> buildRepairRunFromRow(extractedRow, extractedRow.getUUID("id")))
+        .collect(Collectors.toList());
   }
 
   @Override

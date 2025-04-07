@@ -20,7 +20,7 @@
 
     <groupId>io.cassandrareaper</groupId>
     <artifactId>cassandra-reaper-pom</artifactId>
-    <version>3.4.0-SNAPSHOT</version>
+    <version>3.9.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Reaper for Apache Cassandra project</name>
@@ -200,6 +200,9 @@
                 <exclude>**/*.access</exclude>
                 <exclude>**/*.password</exclude>
                 <exclude>**/*.txt</exclude>
+                <exclude>**/*.crt</exclude>
+                <exclude>**/*.key</exclude>
+                <exclude>**/*.pem</exclude>
                 <exclude>src/packaging/**</exclude>
                 <exclude>codecov.yml</exclude>
               </excludes>
@@ -306,7 +309,7 @@
                   <dependency>
                     <groupId>com.puppycrawl.tools</groupId>
                     <artifactId>checkstyle</artifactId>
-                    <version>8.19</version>
+                    <version>10.17.0</version>
                   </dependency>
                 </dependencies>
             </plugin>

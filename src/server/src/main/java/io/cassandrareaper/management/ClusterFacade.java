@@ -61,6 +61,7 @@ import javax.management.ReflectionException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
@@ -181,7 +182,7 @@ public final class ClusterFacade {
   private static <T> T parseJson(String json, TypeReference<T> ref) throws IOException {
     try {
       ObjectMapper mapper = new ObjectMapper();
-      mapper.registerModule(new Jdk8Module());
+      mapper.registerModule(new Jdk8Module()).registerModule(new JodaModule());
       return mapper.readValue(json, ref);
     } catch (IOException e) {
       LOG.error("Error parsing json", e);
@@ -892,12 +893,10 @@ public final class ClusterFacade {
   private ICassandraManagementProxy connectImpl(Cluster cluster, Collection<String> endpoints)
           throws ReaperException {
     try {
-      ICassandraManagementProxy proxy = context.managementConnectionFactory
-              .connectAny(
-          endpoints
-              .stream()
-              .map(host -> Node.builder().withCluster(cluster).withHostname(host).build())
-              .collect(Collectors.toList()));
+      ICassandraManagementProxy proxy = context.managementConnectionFactory.connectAny(endpoints.stream()
+          .map(host -> Node.builder().withCluster(cluster).withHostname(host).build())
+          .collect(Collectors.toList())
+      );
 
       Async.markClusterActive(cluster, context);
       return proxy;
@@ -923,7 +922,7 @@ public final class ClusterFacade {
         : endpoints;
   }
 
-  private static class Async {
+  private static final class Async {
     private static final ExecutorService ASYNC = Executors.newSingleThreadExecutor();
 
     private static boolean markClusterActive(Cluster cluster, AppContext context) {

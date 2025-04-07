@@ -26,7 +26,6 @@ import io.cassandrareaper.core.RepairSegment;
 import io.cassandrareaper.core.RepairUnit;
 import io.cassandrareaper.core.Segment;
 import io.cassandrareaper.management.ClusterFacade;
-import io.cassandrareaper.storage.IDistributedStorage;
 import io.cassandrareaper.storage.IStorageDao;
 import io.cassandrareaper.storage.cassandra.CassandraStorageFacade;
 import io.cassandrareaper.storage.cluster.IClusterDao;
@@ -82,6 +81,7 @@ public final class RepairManagerTest {
     final String ksName = "reaper";
     final Set<String> cfNames = Sets.newHashSet("reaper");
     final boolean incrementalRepair = false;
+    final boolean subrangeIncremental = false;
     final Set<String> nodes = Sets.newHashSet("127.0.0.1");
     final Set<String> datacenters = Collections.emptySet();
     final double intensity = 0.5f;
@@ -96,6 +96,7 @@ public final class RepairManagerTest {
         .keyspaceName(ksName)
         .columnFamilies(cfNames)
         .incrementalRepair(incrementalRepair)
+        .subrangeIncrementalRepair(subrangeIncremental)
         .nodes(nodes)
         .datacenters(datacenters)
         .repairThreadCount(repairThreadCount)
@@ -142,7 +143,7 @@ public final class RepairManagerTest {
     Mockito.doNothing().when(context.repairManager).abortSegments(any(), any());
     Mockito.doReturn(run).when(context.repairManager).startRepairRun(run);
 
-    when(((IDistributedStorage) context.storage).getLockedSegmentsForRun(any())).thenReturn(Collections.emptySet());
+    when(context.storage.getLockedSegmentsForRun(any())).thenReturn(Collections.emptySet());
     IRepairUnitDao mockedRepairUnitDao = mock(IRepairUnitDao.class);
     Mockito.when(((CassandraStorageFacade) context.storage).getRepairUnitDao()).thenReturn(mockedRepairUnitDao);
     Mockito.when(mockedRepairUnitDao.getRepairUnit(any(UUID.class))).thenReturn(cf);
@@ -167,6 +168,7 @@ public final class RepairManagerTest {
     final String ksName = "reaper";
     final Set<String> cfNames = Sets.newHashSet("reaper");
     final boolean incrementalRepair = false;
+    final boolean subrangeIncremental = false;
     final Set<String> nodes = Sets.newHashSet("127.0.0.1");
     final Set<String> datacenters = Collections.emptySet();
     final double intensity = 0.5f;
@@ -187,7 +189,6 @@ public final class RepairManagerTest {
     AppContext context = new AppContext();
     context.storage = storage;
     context.config = new ReaperApplicationConfiguration();
-
     RepairManager repairManager = RepairManager.create(
         context,
         Executors.newScheduledThreadPool(1),
@@ -195,15 +196,14 @@ public final class RepairManagerTest {
         TimeUnit.MILLISECONDS,
         1,
         context.storage.getRepairRunDao());
-
     repairManager = Mockito.spy(repairManager);
     context.repairManager = repairManager;
-
     final RepairUnit cf = RepairUnit.builder()
         .clusterName(clusterName)
         .keyspaceName(ksName)
         .columnFamilies(cfNames)
         .incrementalRepair(incrementalRepair)
+        .subrangeIncrementalRepair(subrangeIncremental)
         .nodes(nodes)
         .datacenters(datacenters)
         .repairThreadCount(repairThreadCount)
@@ -237,7 +237,7 @@ public final class RepairManagerTest {
     Mockito.when(((CassandraStorageFacade) context.storage).getRepairUnitDao()).thenReturn(mockedRepairUnitDao);
     Mockito.when(mockedRepairUnitDao.getRepairUnit(any(UUID.class))).thenReturn(cf);
 
-    when(((IDistributedStorage) context.storage).getLockedSegmentsForRun(any())).thenReturn(
+    when(context.storage.getLockedSegmentsForRun(any())).thenReturn(
         new HashSet<UUID>(Arrays.asList(segment.getId())));
 
     context.repairManager.resumeRunningRepairRuns();
@@ -260,6 +260,7 @@ public final class RepairManagerTest {
     final String ksName = "reaper";
     final Set<String> cfNames = Sets.newHashSet("reaper");
     final boolean incrementalRepair = false;
+    final boolean subrangeIncremental = false;
     final Set<String> nodes = Sets.newHashSet("127.0.0.1");
     final Set<String> datacenters = Collections.emptySet();
     final double intensity = 0.5f;
@@ -279,6 +280,7 @@ public final class RepairManagerTest {
         .keyspaceName(ksName)
         .columnFamilies(cfNames)
         .incrementalRepair(incrementalRepair)
+        .subrangeIncrementalRepair(subrangeIncremental)
         .nodes(nodes)
         .datacenters(datacenters)
         .repairThreadCount(repairThreadCount)
@@ -348,6 +350,7 @@ public final class RepairManagerTest {
     final String ksName = "reaper";
     final Set<String> cfNames = Sets.newHashSet("reaper");
     final boolean incrementalRepair = false;
+    final boolean subrangeIncremental = false;
     final Set<String> nodes = Sets.newHashSet("127.0.0.1");
     final Set<String> datacenters = Collections.emptySet();
     final double intensity = 0.5f;
@@ -382,6 +385,7 @@ public final class RepairManagerTest {
         .keyspaceName(ksName)
         .columnFamilies(cfNames)
         .incrementalRepair(incrementalRepair)
+        .subrangeIncrementalRepair(subrangeIncremental)
         .nodes(nodes)
         .datacenters(datacenters)
         .repairThreadCount(repairThreadCount)
@@ -451,6 +455,7 @@ public final class RepairManagerTest {
     final String ksName = "reaper";
     final Set<String> cfNames = Sets.newHashSet("reaper");
     final boolean incrementalRepair = false;
+    final boolean subrangeIncremental = false;
     final Set<String> nodes = Sets.newHashSet("127.0.0.1");
     final Set<String> datacenters = Collections.emptySet();
     final int repairThreadCount = 1;
@@ -461,6 +466,7 @@ public final class RepairManagerTest {
         .keyspaceName(ksName)
         .columnFamilies(cfNames)
         .incrementalRepair(incrementalRepair)
+        .subrangeIncrementalRepair(subrangeIncremental)
         .nodes(nodes)
         .datacenters(datacenters)
         .repairThreadCount(repairThreadCount)
@@ -568,6 +574,7 @@ public final class RepairManagerTest {
     final String ksName = "reaper";
     final Set<String> cfNames = Sets.newHashSet("reaper");
     final boolean incrementalRepair = false;
+    final boolean subrangeIncremental = false;
     final Set<String> nodes = Sets.newHashSet("127.0.0.1");
     final Set<String> datacenters = Collections.emptySet();
     final int repairThreadCount = 1;
@@ -578,6 +585,7 @@ public final class RepairManagerTest {
         .keyspaceName(ksName)
         .columnFamilies(cfNames)
         .incrementalRepair(incrementalRepair)
+        .subrangeIncrementalRepair(subrangeIncremental)
         .nodes(nodes)
         .datacenters(datacenters)
         .repairThreadCount(repairThreadCount)
@@ -603,14 +611,14 @@ public final class RepairManagerTest {
     return run;
   }
 
-  private static class NotEmptyList implements ArgumentMatcher<Collection<RepairSegment>> {
+  private static final class NotEmptyList implements ArgumentMatcher<Collection<RepairSegment>> {
     @Override
     public boolean matches(Collection<RepairSegment> segments) {
       return !segments.isEmpty();
     }
   }
 
-  private static class EmptyList implements ArgumentMatcher<Collection<RepairSegment>> {
+  private static final class EmptyList implements ArgumentMatcher<Collection<RepairSegment>> {
     @Override
     public boolean matches(Collection<RepairSegment> segments) {
       return segments.isEmpty();

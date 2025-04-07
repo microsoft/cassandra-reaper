@@ -21,9 +21,9 @@ set -xe
 
 function set_java_home() {
     major_version=$1
-    for jdk in /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/${major_version}*/; 
+    for jdk in /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/${major_version}*/*/;
     do 
-        export JAVA_HOME="${jdk/}"x64/
+        export JAVA_HOME="${jdk/}"
         echo "JAVA_HOME is set to $JAVA_HOME"
         export JAVA_TOOL_OPTIONS="-Dcom.sun.jndi.rmiURLParsing=legacy"
     done
@@ -118,8 +118,9 @@ case "${TEST_TYPE}" in
             # Stop CCM now so we can restart it with Management API
             ccm stop
             # Start Management API
-            MGMT_API_LOG_DIR=/tmp/log/cassandra1 bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --db-socket=/tmp/db1.sock --host=unix:///tmp/mgmtapi1.sock --host=http://127.0.0.1:8080 --db-home=`dirname ~/.ccm/test/node1`/node1 &'
-            MGMT_API_LOG_DIR=/tmp/log/cassandra2 bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --db-socket=/tmp/db2.sock --host=unix:///tmp/mgmtapi2.sock --host=http://127.0.0.2:8080 --db-home=`dirname ~/.ccm/test/node2`/node2 &'
+            CERT_DIR=/home/runner/work/cassandra-reaper/cassandra-reaper/.github/files
+            MGMT_API_LOG_DIR=/tmp/log/cassandra1 MGMT_API_TLS_CA_CERT_FILE=$CERT_DIR/mutual_auth_ca.pem MGMT_API_TLS_CERT_FILE=$CERT_DIR/mutual_auth_server.crt MGMT_API_TLS_KEY_FILE=$CERT_DIR/mutual_auth_server.key bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --tlscacert=$MGMT_API_TLS_CA_CERT_FILE --tlscert=$MGMT_API_TLS_CERT_FILE --tlskey=$MGMT_API_TLS_KEY_FILE --db-socket=/tmp/db1.sock --host=unix:///tmp/mgmtapi1.sock --host=http://127.0.0.1:8080 --db-home=`dirname ~/.ccm/test/node1`/node1 > /tmp/log/cassandra1/mgmt.out 2>&1 &'
+            MGMT_API_LOG_DIR=/tmp/log/cassandra2 MGMT_API_TLS_CA_CERT_FILE=$CERT_DIR/mutual_auth_ca.pem MGMT_API_TLS_CERT_FILE=$CERT_DIR/mutual_auth_server.crt MGMT_API_TLS_KEY_FILE=$CERT_DIR/mutual_auth_server.key bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --tlscacert=$MGMT_API_TLS_CA_CERT_FILE --tlscert=$MGMT_API_TLS_CERT_FILE --tlskey=$MGMT_API_TLS_KEY_FILE --db-socket=/tmp/db2.sock --host=unix:///tmp/mgmtapi2.sock --host=http://127.0.0.2:8080 --db-home=`dirname ~/.ccm/test/node2`/node2 > /tmp/log/cassandra2/mgmt.out 2>&1 &'
             # wait for Cassandra to be ready
             for i in `seq 1 30` ; do
                 # keep curl from exiting with non-zero
@@ -216,8 +217,8 @@ case "${TEST_TYPE}" in
         sudo apt-get update
         sudo apt-get install jq -y
         mvn -B package -DskipTests
-        docker-compose -f ./src/packaging/docker-build/docker-compose.yml build
-        docker-compose -f ./src/packaging/docker-build/docker-compose.yml run build
+        docker compose -f ./src/packaging/docker-build/docker-compose.yml build
+        docker compose -f ./src/packaging/docker-build/docker-compose.yml run build
         VERSION=$(printf 'VER\t${project.version}' | mvn help:evaluate | grep '^VER' | cut -f2)
         docker build --build-arg SHADED_JAR=src/server/target/cassandra-reaper-${VERSION}.jar -f src/server/src/main/docker/Dockerfile -t cassandra-reaper:latest .
         docker images
@@ -225,9 +226,9 @@ case "${TEST_TYPE}" in
         # Clear out Cassandra data before starting a new cluster
         sudo rm -vfr ./src/packaging/data/
 
-        docker-compose -f ./src/packaging/docker-compose.yml up -d cassandra
-        sleep 30 && docker-compose -f ./src/packaging/docker-compose.yml run cqlsh-initialize-reaper_db
-        sleep 10 && docker-compose -f ./src/packaging/docker-compose.yml up -d reaper
+        docker compose -f ./src/packaging/docker-compose.yml up -d cassandra
+        sleep 30 && docker compose -f ./src/packaging/docker-compose.yml run cqlsh-initialize-reaper_db
+        sleep 10 && docker compose -f ./src/packaging/docker-compose.yml up -d reaper
         docker ps -a
 
         # requests python package is needed to use spreaper
@@ -235,14 +236,14 @@ case "${TEST_TYPE}" in
         mkdir -p ~/.reaper
         echo "admin" > ~/.reaper/credentials
         sleep 30 && src/packaging/bin/spreaper login admin
-        src/packaging/bin/spreaper add-cluster $(docker-compose -f ./src/packaging/docker-compose.yml run nodetool status | grep UN | tr -s ' ' | cut -d' ' -f2) 7199 > cluster.json
+        src/packaging/bin/spreaper add-cluster $(docker compose -f ./src/packaging/docker-compose.yml run nodetool status | grep UN | tr -s ' ' | cut -d' ' -f2) 7199 > cluster.json
         cat cluster.json
         cluster_name=$(cat cluster.json|grep -v "#" | jq -r '.name')
         if [[ "$cluster_name" != "reaper-cluster" ]]; then
             echo "Failed registering cluster in Reaper running in Docker"
             exit 1
         fi
-        sleep 5 && docker-compose -f ./src/packaging/docker-compose.yml down
+        sleep 5 && docker compose -f ./src/packaging/docker-compose.yml down
         ;;
     *)
         echo "Skipping, no actions for TEST_TYPE=${TEST_TYPE}."

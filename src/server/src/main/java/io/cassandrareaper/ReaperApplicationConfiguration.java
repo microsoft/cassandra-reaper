@@ -33,6 +33,7 @@ import javax.validation.constraints.NotNull;
 import javax.ws.rs.DefaultValue;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.Configuration;
 import io.dropwizard.client.HttpClientConfiguration;
 import org.apache.cassandra.repair.RepairParallelism;
@@ -44,6 +45,7 @@ import systems.composable.dropwizard.cassandra.network.AddressTranslatorFactory;
 public final class ReaperApplicationConfiguration extends Configuration {
 
   public static final int DEFAULT_MGMT_API_METRICS_PORT = 9000;
+  private static final int DEFAULT_MGMT_API_PORT = 8080;
   private static final int DEFAULT_SEGMENT_COUNT_PER_NODE = 64;
   private static final Integer DEFAULT_MAX_PENDING_COMPACTIONS = 20;
 
@@ -71,6 +73,10 @@ public final class ReaperApplicationConfiguration extends Configuration {
   @NotNull
   @DefaultValue("false")
   private Boolean incrementalRepair;
+
+  @JsonProperty
+  @DefaultValue("false")
+  private Boolean subrangeIncrementalRepair;
 
   @JsonProperty
   private Boolean blacklistTwcsTables;
@@ -168,7 +174,14 @@ public final class ReaperApplicationConfiguration extends Configuration {
   private CryptographFactory cryptograph;
 
   @JsonProperty
-  private Integer mgmtApiMetricsPort;
+  @Nullable
+  private String persistenceStoragePath;
+
+  @JsonProperty
+  private Boolean scheduleRetryOnError;
+
+  @JsonProperty
+  private Duration scheduleRetryDelay;
 
   public HttpManagement getHttpManagement() {
     return httpManagement;
@@ -232,6 +245,14 @@ public final class ReaperApplicationConfiguration extends Configuration {
 
   public void setIncrementalRepair(boolean incrementalRepair) {
     this.incrementalRepair = incrementalRepair;
+  }
+
+  public boolean getSubrangeIncrementalRepair() {
+    return subrangeIncrementalRepair != null ? subrangeIncrementalRepair : false;
+  }
+
+  public void setSubrangeIncrementalRepair(boolean subrangeIncrementalRepair) {
+    this.subrangeIncrementalRepair = subrangeIncrementalRepair;
   }
 
   public boolean getBlacklistTwcsTables() {
@@ -509,13 +530,29 @@ public final class ReaperApplicationConfiguration extends Configuration {
     this.cryptograph = cryptograph;
   }
 
-  public int getMgmtApiMetricsPort() {
-    return mgmtApiMetricsPort == null ? DEFAULT_MGMT_API_METRICS_PORT : mgmtApiMetricsPort;
+  public void setPersistenceStoragePath(@Nullable String persistenceStoragePath) {
+    this.persistenceStoragePath = persistenceStoragePath;
   }
 
-  @JsonProperty("mgmtApiMetricsPort")
-  public void setMgmtApiMetricsPort(int mgmtApiMetricsPort) {
-    this.mgmtApiMetricsPort = mgmtApiMetricsPort;
+  @Nullable
+  public String getPersistenceStoragePath() {
+    return persistenceStoragePath;
+  }
+
+  public Boolean isScheduleRetryOnError() {
+    return scheduleRetryOnError != null ? scheduleRetryOnError : false;
+  }
+
+  public void setScheduleRetryOnError(Boolean scheduleRetryOnError) {
+    this.scheduleRetryOnError = scheduleRetryOnError;
+  }
+
+  public Duration getScheduleRetryDelay() {
+    return scheduleRetryDelay != null ? scheduleRetryDelay : Duration.ofMinutes(60);
+  }
+
+  public void setScheduleRetryDelay(Duration scheduleRetryDelay) {
+    this.scheduleRetryDelay = scheduleRetryDelay;
   }
 
   public enum DatacenterAvailability {
@@ -574,6 +611,9 @@ public final class ReaperApplicationConfiguration extends Configuration {
 
     @JsonProperty
     private Boolean incremental;
+
+    @JsonProperty
+    private Boolean subrangeIncrementalRepair;
 
     @JsonProperty
     private Integer percentUnrepairedThreshold;
@@ -655,6 +695,14 @@ public final class ReaperApplicationConfiguration extends Configuration {
       this.incremental = incremental;
     }
 
+    public Boolean subrangeIncrementalRepair() {
+      return subrangeIncrementalRepair == null ? false : subrangeIncrementalRepair;
+    }
+
+    public void setSubrangeIncrementalRepair(Boolean subrangeIncrementalRepair) {
+      this.subrangeIncrementalRepair = subrangeIncrementalRepair;
+    }
+
     public Integer getPercentUnrepairedThreshold() {
       return percentUnrepairedThreshold == null ? -1 : percentUnrepairedThreshold;
     }
@@ -721,9 +769,73 @@ public final class ReaperApplicationConfiguration extends Configuration {
     @JsonProperty
     private Boolean enabled = false;
 
+    @JsonProperty
+    private String keystore;
+
+    @JsonProperty
+    private String truststore;
+
+    @JsonProperty
+    private String truststoresDir;
+
+    @JsonProperty
+    private Integer mgmtApiMetricsPort;
+
+    @JsonProperty
+    private Integer managementApiPort;
+
     public Boolean isEnabled() {
       return enabled;
     }
     // TODO: Add ports and root paths here.
+
+    public String getKeystore() {
+      return keystore;
+    }
+
+    public String getTruststore() {
+      return truststore;
+    }
+
+    public String getTruststoresDir() {
+      return truststoresDir;
+    }
+
+    @VisibleForTesting
+    public void setEnabled(Boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    @VisibleForTesting
+    public void setKeystore(String keystore) {
+      this.keystore = keystore;
+    }
+
+    @VisibleForTesting
+    public void setTruststore(String truststore) {
+      this.truststore = truststore;
+    }
+
+    @VisibleForTesting
+    public void setTruststoresDir(String truststoresDir) {
+      this.truststoresDir = truststoresDir;
+    }
+
+    public int getMgmtApiMetricsPort() {
+      return mgmtApiMetricsPort == null ? DEFAULT_MGMT_API_METRICS_PORT : mgmtApiMetricsPort;
+    }
+
+    public void setManagementApiPort(Integer managementApiPort) {
+      this.managementApiPort = managementApiPort;
+    }
+
+    public Integer getManagementApiPort() {
+      return managementApiPort == null ? DEFAULT_MGMT_API_PORT : managementApiPort;
+    }
+
+    @JsonProperty("mgmtApiMetricsPort")
+    public void setMgmtApiMetricsPort(int mgmtApiMetricsPort) {
+      this.mgmtApiMetricsPort = mgmtApiMetricsPort;
+    }
   }
 }

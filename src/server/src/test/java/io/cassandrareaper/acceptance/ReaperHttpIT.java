@@ -25,7 +25,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SocketOptions;
-
 import cucumber.api.CucumberOptions;
 import cucumber.api.junit.Cucumber;
 import org.junit.AfterClass;
@@ -49,7 +48,7 @@ public class ReaperHttpIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReaperCassandraIT.class);
   private static final List<ReaperTestJettyRunner> RUNNER_INSTANCES = new CopyOnWriteArrayList<>();
-  private static final String CASS_CONFIG_FILE = "cassandra-reaper-http-at.yaml";
+  private static final String CASS_CONFIG_FILE = "cassandra-reaper-https-at.yaml";
   private static final Random RAND = new Random(System.nanoTime());
   private static Thread GRIM_REAPER;
 

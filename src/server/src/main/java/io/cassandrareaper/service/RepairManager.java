@@ -177,7 +177,7 @@ public final class RepairManager implements AutoCloseable {
       Collection<RepairRun> pausedRepairRuns = repairRunDao.getRepairRunsWithState(RepairRun.RunState.PAUSED);
       abortAllRunningSegmentsWithNoLeader(runningRepairRuns);
       abortAllRunningSegmentsInKnownPausedRepairRuns(pausedRepairRuns);
-      resumeUnkownRunningRepairRuns(runningRepairRuns);
+      resumeUnknownRunningRepairRuns(runningRepairRuns);
       resumeUnknownPausedRepairRuns(pausedRepairRuns);
     } catch (RuntimeException e) {
       throw new ReaperException(e);
@@ -199,7 +199,7 @@ public final class RepairManager implements AutoCloseable {
         });
   }
 
-  private void resumeUnkownRunningRepairRuns(Collection<RepairRun> runningRepairRuns) throws ReaperException {
+  private void resumeUnknownRunningRepairRuns(Collection<RepairRun> runningRepairRuns) throws ReaperException {
     try {
       repairRunnersLock.lock();
       for (RepairRun repairRun : runningRepairRuns) {
@@ -247,7 +247,7 @@ public final class RepairManager implements AutoCloseable {
       pausedRepairRuns
           .stream()
           .filter((pausedRepairRun) -> (!repairRunners.containsKey(pausedRepairRun.getId())))
-          // add "paused" repair run to this reaper instance, so it can be visualised in UI
+          // add "paused" repair run to this reaper instance, so it can be visualized in UI
           .forEachOrdered((pausedRepairRun) -> startRunner(pausedRepairRun));
     } finally {
       repairRunnersLock.unlock();
@@ -256,11 +256,15 @@ public final class RepairManager implements AutoCloseable {
 
   private void abortSegmentsWithNoLeader(RepairRun repairRun, Collection<RepairSegment> runningSegments) {
     RepairUnit repairUnit = context.storage.getRepairUnitDao().getRepairUnit(repairRun.getRepairUnitId());
-    if (repairUnit.getIncrementalRepair()) {
+    if (repairUnitIsNonSubrangeIncremental(repairUnit)) {
       abortSegmentsWithNoLeaderIncremental(repairRun, runningSegments);
     } else {
       abortSegmentsWithNoLeaderNonIncremental(repairRun, runningSegments);
     }
+  }
+
+  private boolean repairUnitIsNonSubrangeIncremental(RepairUnit repairUnit) {
+    return repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair();
   }
 
   private void abortSegmentsWithNoLeaderIncremental(RepairRun repairRun, Collection<RepairSegment> runningSegments) {
@@ -304,9 +308,7 @@ public final class RepairManager implements AutoCloseable {
       if (context.storage instanceof IDistributedStorage || !repairRunners.containsKey(repairRun.getId())) {
         // When multiple Reapers are in use, we can get stuck segments when one instance is rebooted
         // Any segment in RUNNING or STARTED state but with no leader should be killed
-        Set<UUID> leaders = context.storage instanceof IDistributedStorage
-            ? ((IDistributedStorage) context.storage).getLockedSegmentsForRun(repairRun.getId())
-            : Collections.emptySet();
+        Set<UUID> leaders = context.storage.getLockedSegmentsForRun(repairRun.getId());
 
         Collection<RepairSegment> orphanedSegments = runningSegments
             .stream()
@@ -326,7 +328,10 @@ public final class RepairManager implements AutoCloseable {
     try {
       if (null == segment.getCoordinatorHost() || RepairSegment.State.DONE == segment.getState()) {
         RepairUnit repairUnit = context.storage.getRepairUnitDao().getRepairUnit(segment.getRepairUnitId());
-        UUID leaderElectionId = repairUnit.getIncrementalRepair() ? runId : segmentId;
+        // Incremental non subrange repairs will use the run id as leader election id
+        // to prevent multiple segments to run at once. Subrange incremental will allow multiple segments.
+        UUID leaderElectionId = repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair()
+            ? runId : segmentId;
         boolean tookLead;
         if (tookLead = takeLead(context, leaderElectionId) || renewLead(context, leaderElectionId)) {
           try {

@@ -67,6 +67,7 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.MoreExecutors;
 import org.apache.cassandra.repair.RepairParallelism;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -371,6 +372,42 @@ final class RepairRunner implements Runnable {
     }
   }
 
+  private void maybeScheduleRetryOnError() {
+    if (context.config.isScheduleRetryOnError()) {
+      // Check if a schedule exists for this keyspace and cluster before rescheduling
+      Collection<RepairSchedule> schedulesForKeyspace
+              = context.storage.getRepairScheduleDao()
+              .getRepairSchedulesForClusterAndKeyspace(clusterName, repairUnit.getKeyspaceName());
+      List<RepairSchedule> repairSchedules = schedulesForKeyspace.stream()
+              .filter(schedule -> schedule.getRepairUnitId().equals(repairUnit.getId()))
+              .collect(Collectors.toList());
+
+      if (!repairSchedules.isEmpty()) {
+        // Set precondition that only a single schedule should match
+        Preconditions.checkArgument(repairSchedules.size() == 1,
+                String.format("Update for repair run %s and unit %s "
+                                + "should impact a single schedule. %d were found",
+                        repairRunId,
+                        repairUnit.getId(),
+                        repairSchedules.size())
+        );
+        RepairSchedule scheduleToTune = repairSchedules.get(0);
+
+        int minuteRetryDelay = (int) context.config.getScheduleRetryDelay().toMinutes();
+        DateTime nextRepairRun = DateTime.now().plusMinutes(minuteRetryDelay);
+
+        if (nextRepairRun.isBefore(scheduleToTune.getNextActivation())) {
+          LOG.debug("Scheduling next repair run at {} for repair schedule {}", nextRepairRun,
+                  scheduleToTune.getId());
+
+          RepairSchedule newSchedule
+                  = scheduleToTune.with().nextActivation(nextRepairRun).build(scheduleToTune.getId());
+          context.storage.getRepairScheduleDao().updateRepairSchedule(newSchedule);
+        }
+      }
+    }
+  }
+
   /**
    * Tune segment timeout and number of segments for adaptive schedules.
    * Checks that the run was triggered by an adaptive schedule and gathers info on the run to apply tunings.
@@ -494,7 +531,7 @@ final class RepairRunner implements Runnable {
     for (RepairSegment segment : nextRepairSegments) {
       Map<String, String> potentialReplicaMap = this.repairRunService.getDCsByNodeForRepairSegment(
           cluster, segment.getTokenRange(), repairUnit.getKeyspaceName(), repairUnit);
-      if (repairUnit.getIncrementalRepair()) {
+      if (repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair()) {
         Map<String, String> endpointHostIdMap = clusterFacade.getEndpointToHostId(cluster);
         if (segment.getHostID() == null) {
           throw new ReaperException(
@@ -506,6 +543,9 @@ final class RepairRunner implements Runnable {
             .forEach(entry -> potentialReplicas.add(entry.getKey()));
       } else {
         potentialReplicas.addAll(potentialReplicaMap.keySet());
+      }
+      if (potentialReplicas.isEmpty()) {
+        failRepairDueToOutdatedSegment(segment.getId(), segment.getTokenRange());
       }
       LOG.debug("Potential replicas for segment {}: {}", segment.getId(), potentialReplicas);
       ICassandraManagementProxy coordinator = clusterFacade.connect(cluster, potentialReplicas);
@@ -671,8 +711,8 @@ final class RepairRunner implements Runnable {
     LOG.debug("preparing to repair segment {} on run with id {}", segmentId, repairRunId);
 
     List<String> potentialCoordinators = Lists.newArrayList();
-    if (!repairUnit.getIncrementalRepair()) {
-      // full repair
+    if (!repairUnit.getIncrementalRepair() || repairUnit.getSubrangeIncrementalRepair()) {
+      // full repair or subrange incremental
       try {
         potentialCoordinators = filterPotentialCoordinatorsByDatacenters(
             repairUnit.getDatacenters(),
@@ -683,26 +723,7 @@ final class RepairRunner implements Runnable {
         return true;
       }
       if (potentialCoordinators.isEmpty()) {
-        LOG.warn(
-            "Segment #{} is faulty, no potential coordinators for range: {}",
-            segmentId,
-            segment.toString());
-        // This segment has a faulty token range. Abort the entire repair run.
-        synchronized (this) {
-          repairRunDao.updateRepairRun(
-              repairRunDao.getRepairRun(repairRunId).get()
-                  .with()
-                  .runState(RepairRun.RunState.ERROR)
-                  .lastEvent(String.format("No coordinators for range %s", segment))
-                  .endTime(DateTime.now())
-                  .build(repairRunId));
-
-          context.metricRegistry.counter(
-              MetricRegistry.name(RepairManager.class, "repairDone", RepairRun.RunState.ERROR.toString())).inc();
-
-          killAndCleanupRunner();
-        }
-
+        failRepairDueToOutdatedSegment(segmentId, segment);
         return false;
       }
     } else {
@@ -744,12 +765,42 @@ final class RepairRunner implements Runnable {
             public void onFailure(Throwable throwable) {
               LOG.error("Executing SegmentRunner failed", throwable);
             }
-          });
+          },
+          MoreExecutors.directExecutor());
     } catch (ReaperException ex) {
       LOG.error("Executing SegmentRunner failed", ex);
     }
 
     return true;
+  }
+
+  private synchronized void failRepairDueToOutdatedSegment(UUID segmentId, Segment segment) {
+    // This segment has a faulty token range possibly due to an additive change in cluster topology
+    // during repair. Abort the entire repair run.
+    LOG.warn("Segment #{} is faulty, no potential coordinators for range: {}", segmentId,
+            segment.toString());
+    // If the segment has been removed, ignore. Should only happen in tests on backends
+    // that delete repair segments.
+    Optional<RepairRun> repairRun = repairRunDao.getRepairRun(repairRunId);
+    if (repairRun.isPresent()) {
+      try {
+        repairRunDao.updateRepairRun(
+                repairRunDao.getRepairRun(repairRunId).get()
+                        .with()
+                        .runState(RepairRun.RunState.ERROR)
+                        .lastEvent(String.format("No coordinators for range %s", segment))
+                        .endTime(DateTime.now())
+                        .build(repairRunId));
+
+        context.metricRegistry.counter(
+                MetricRegistry.name(RepairManager.class, "repairDone",
+                        RepairRun.RunState.ERROR.toString())).inc();
+
+        maybeScheduleRetryOnError();
+      } finally {
+        killAndCleanupRunner();
+      }
+    }
   }
 
   private List<String> filterPotentialCoordinatorsByDatacenters(

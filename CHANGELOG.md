@@ -1,5 +1,47 @@
 ## Change Log
 
+### 3.8.0 (2025/02/02 07:56 +00:00)
+- [#1538](https://github.com/thelastpickle/cassandra-reaper/pull/1538) Remove python from the Docker image (#1538) (@adejanovski)
+- [#1521](https://github.com/thelastpickle/cassandra-reaper/pull/1521) Fail repair after additive change in cluster topology (#1521) (@andresbeckruiz)
+
+### 3.7.1 (2025/01/06 07:19 +00:00)
+- [#1535](https://github.com/thelastpickle/cassandra-reaper/pull/1535) Fix bug in replica lock release in the mem store (#1535) (@adejanovski)
+- [#1533](https://github.com/thelastpickle/cassandra-reaper/pull/1533) Memory store segment leader election (#1533) (@adejanovski)
+
+### 3.7.0 (2024/11/15 12:02 +00:00)
+- [#1527](https://github.com/thelastpickle/cassandra-reaper/pull/1527) Upgrade the base docker image from Corretto 11.0.20 to 11.0.25 (#1527) (@adejanovski)
+- [#1510](https://github.com/thelastpickle/cassandra-reaper/pull/1510) update doc for persistenceStoragePath (#1510) (@SarthakSahu)
+- [#1457](https://github.com/thelastpickle/cassandra-reaper/pull/1457) Bump io.netty:netty-handler in /src/server (#1457) (@dependabot[bot])
+- [#1461](https://github.com/thelastpickle/cassandra-reaper/pull/1461) Bump org.apache.shiro:shiro-core from 1.12.0 to 1.13.0 in /src/server (#1461) (@dependabot[bot])
+- [#1524](https://github.com/thelastpickle/cassandra-reaper/pull/1524) Allow setting up per-cluster TLS connections (#1524) (@rzvoncek)
+- [#1523](https://github.com/thelastpickle/cassandra-reaper/pull/1523) Update java driver 3.11.0 to 3.11.5 (#1523) (@bschoening)
+- [#1516](https://github.com/thelastpickle/cassandra-reaper/pull/1516) Switch CI to docker-compose v2 (#1516) (@adejanovski)
+- [#1509](https://github.com/thelastpickle/cassandra-reaper/pull/1509) Subrange incremental repair (#1509) (@adejanovski)
+
+### 3.6.1 (2024/06/11 07:14 +00:00)
+- [#1507](https://github.com/thelastpickle/cassandra-reaper/pull/1507) Allow mounting a volume to host the config and enable read only root FS (#1507) (@adejanovski)
+
+### 3.6.0 (2024/04/18 08:53 +00:00)
+- [#1500](https://github.com/thelastpickle/cassandra-reaper/pull/1500) Upgrade snakeyaml (#1500) (@emerkle826)
+- [#1499](https://github.com/thelastpickle/cassandra-reaper/pull/1499) Update Dockerfile to specify restricted Java temp directory (#1499) (@emerkle826)
+- [#1498](https://github.com/thelastpickle/cassandra-reaper/pull/1498) Update Dockerfile base image (#1498) (@emerkle826)
+- [#1492](https://github.com/thelastpickle/cassandra-reaper/pull/1492) Fix High/Critical CVEs (#1492) (@emerkle826)
+- [#1484](https://github.com/thelastpickle/cassandra-reaper/pull/1484) Add EclipseStore to memory storage for persistence (#1484) (@emerkle826)
+- [#1481](https://github.com/thelastpickle/cassandra-reaper/pull/1481) Upgrade dropwizard.version to 2.1.12 (#1481) (@FieteO)
+- [#1482](https://github.com/thelastpickle/cassandra-reaper/pull/1482) Generate SHA256 digests when packaging RPM files. (#1482) (@ernstae)
+- [#1478](https://github.com/thelastpickle/cassandra-reaper/pull/1478) Ignore repair_run_by_cluster_v2 rows with no corresponding repair (#1478) (@SesquipedalianDefenestrator)
+- [#1479](https://github.com/thelastpickle/cassandra-reaper/pull/1479) Improve idempotency of db creation scripts (#1479) (@FieteO)
+- [#1477](https://github.com/thelastpickle/cassandra-reaper/pull/1477) Set segment count per node to consistent value across defaults and docs (#1477) (@SesquipedalianDefenestrator)
+- [#1470](https://github.com/thelastpickle/cassandra-reaper/pull/1470) Fix spelling (#1470) (@Hagfjall)
+
+### 3.5.0 (2024/02/22 08:49 +00:00)
+- [#1467](https://github.com/thelastpickle/cassandra-reaper/pull/1467) Add dotenv dependency to the build image (#1467) (@adejanovski)
+- [#1466](https://github.com/thelastpickle/cassandra-reaper/pull/1466) Watch the keystore and truststore directories for changes (#1466) (@burmanm)
+- [#1415](https://github.com/thelastpickle/cassandra-reaper/pull/1415) Add mTLS settings to ApiClient (#1415) (@burmanm)
+- [#1459](https://github.com/thelastpickle/cassandra-reaper/pull/1459) Fix webui login not working in some cases (#1459) (@adejanovski)
+- [#1453](https://github.com/thelastpickle/cassandra-reaper/pull/1453) Pin CI to python 3.11 (#1453) (@adejanovski)
+- [#1267](https://github.com/thelastpickle/cassandra-reaper/pull/1267) Don't strip dash and underscore from metrics' tags (#1267) (@max-melentyev)
+- [#1443](https://github.com/thelastpickle/cassandra-reaper/pull/1443) Remove duplicated `setTimeout` in `error` callback (#1443) (@upsilon2gamma)
 
 ### 3.4.0 (2023/10/25 08:12 +00:00)
 - [#1433](https://github.com/thelastpickle/cassandra-reaper/pull/1433) Filter out Stargate/coordinator nodes from calls to get live nodes or list tokens (#1433) (@adejanovski)

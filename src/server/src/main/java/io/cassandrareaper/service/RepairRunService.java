@@ -50,7 +50,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Supplier;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.cassandra.repair.RepairParallelism;
 import org.slf4j.Logger;
@@ -62,7 +61,7 @@ public final class RepairRunService {
 
   public static final Splitter COMMA_SEPARATED_LIST_SPLITTER
       = Splitter.on(',').trimResults(CharMatcher.anyOf(" ()[]\"'")).omitEmptyStrings();
-  public static final int DEFAULT_SEGMENT_COUNT_PER_NODE = 16;
+  public static final int DEFAULT_SEGMENT_COUNT_PER_NODE = 64;
 
   private static final Logger LOG = LoggerFactory.getLogger(RepairRunService.class);
 
@@ -146,7 +145,7 @@ public final class RepairRunService {
 
   @VisibleForTesting
   static Map<String, List<RingRange>> buildEndpointToRangeMap(Map<List<String>, List<String>> rangeToEndpoint) {
-    Map<String, List<RingRange>> endpointToRange = Maps.newHashMap();
+    Map<String, List<RingRange>> endpointToRange = new ConcurrentHashMap<>();
 
     for (Entry<List<String>, List<String>> entry : rangeToEndpoint.entrySet()) {
       RingRange range = new RingRange(entry.getKey().toArray(new String[entry.getKey().size()]));
@@ -163,7 +162,7 @@ public final class RepairRunService {
   @VisibleForTesting
   static Map<List<String>, List<RingRange>> buildReplicasToRangeMap(
       Map<List<String>, List<String>> rangeToEndpoint) {
-    Map<List<String>, List<RingRange>> replicasToRange = Maps.newHashMap();
+    Map<List<String>, List<RingRange>> replicasToRange = new ConcurrentHashMap<>();
 
     for (Entry<List<String>, List<String>> entry : rangeToEndpoint.entrySet()) {
       RingRange range = new RingRange(entry.getKey().toArray(new String[entry.getKey().size()]));
@@ -252,15 +251,19 @@ public final class RepairRunService {
 
     // preparing a repair run involves several steps
     // the first step is to generate token segments
-    List<Segment> tokenSegments = repairUnit.getIncrementalRepair()
+    // Non subrange incremental repair will generate a single segment per node
+    // Other types of repairs (full and subrange incremental) will generate segments
+    List<Segment> tokenSegments = repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair()
         ? Lists.newArrayList()
         : generateSegments(cluster, segmentsPerNode, repairUnit);
 
     checkNotNull(tokenSegments, "failed generating repair segments");
 
     Map<String, RingRange> nodes = getClusterNodes(cluster, repairUnit);
-    // the next step is to prepare a repair run objec
-    int segments = repairUnit.getIncrementalRepair() ? nodes.keySet().size() : tokenSegments.size();
+    // the next step is to prepare a repair run object
+    int segments = repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair()
+        ? nodes.keySet().size()
+        : tokenSegments.size();
 
     RepairRun.Builder runBuilder = RepairRun.builder(cluster.getName(), repairUnit.getId())
         .intensity(intensity)
@@ -272,7 +275,8 @@ public final class RepairRunService {
         .adaptiveSchedule(adaptiveSchedule);
 
     // the last preparation step is to generate actual repair segments
-    List<RepairSegment.Builder> segmentBuilders = repairUnit.getIncrementalRepair()
+    List<RepairSegment.Builder> segmentBuilders
+        = repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair()
         ? createRepairSegmentsForIncrementalRepair(nodes, repairUnit, cluster, clusterFacade)
         : createRepairSegments(tokenSegments, repairUnit);
 
@@ -323,7 +327,7 @@ public final class RepairRunService {
           sg.generateSegments(
               globalSegmentCount,
               tokens,
-              repairUnit.getIncrementalRepair(),
+              repairUnit.getIncrementalRepair() && !repairUnit.getSubrangeIncrementalRepair(),
               replicasToRange,
               cassandraVersion),
           repairUnit,
@@ -336,7 +340,7 @@ public final class RepairRunService {
       throw new ReaperException("Couldn't get endpoints for tokens", e);
     }
 
-    if (segments.isEmpty() && !repairUnit.getIncrementalRepair()) {
+    if (segments.isEmpty() && (!repairUnit.getIncrementalRepair() || repairUnit.getSubrangeIncrementalRepair())) {
       String errMsg = String.format("failed to generate repair segments for cluster \"%s\"", targetCluster.getName());
       LOG.error(errMsg);
       throw new ReaperException(errMsg);
@@ -369,7 +373,7 @@ public final class RepairRunService {
         ICassandraManagementProxy jmxConnection = clusterFacade.connect(cluster);
         // when hosts are coming up or going down, this method can throw an UndeclaredThrowableException
         Collection<String> nodes = clusterFacade.tokenRangeToEndpoint(cluster, keyspace, segment);
-        Map<String, String> dcByNode = Maps.newHashMap();
+        Map<String, String> dcByNode = new ConcurrentHashMap<>();
         nodes.forEach(node -> dcByNode.put(node, EndpointSnitchInfoProxy.create(jmxConnection).getDataCenter(node)));
         if (repairUnit.getDatacenters().isEmpty()) {
           return dcByNode;
@@ -393,7 +397,7 @@ public final class RepairRunService {
   @VisibleForTesting
   Map<String, RingRange> getClusterNodes(Cluster targetCluster, RepairUnit repairUnit) throws ReaperException {
     ConcurrentHashMap<String, RingRange> nodesWithRanges = new ConcurrentHashMap<>();
-    Map<List<String>, List<String>> rangeToEndpoint = Maps.newHashMap();
+    Map<List<String>, List<String>> rangeToEndpoint = new ConcurrentHashMap<>();
 
     try {
       rangeToEndpoint

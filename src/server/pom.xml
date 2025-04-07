@@ -21,7 +21,7 @@
     <parent>
         <groupId>io.cassandrareaper</groupId>
         <artifactId>cassandra-reaper-pom</artifactId>
-        <version>3.4.0-SNAPSHOT</version>
+        <version>3.9.0-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <name>Reaper for Apache Cassandra server</name>
@@ -29,15 +29,17 @@
     <packaging>jar</packaging>
 
     <properties>
-        <dropwizard.version>2.0.34</dropwizard.version>
-        <jersey.version>2.33</jersey.version>
-        <logback.version>1.2.9</logback.version>
+        <dropwizard.version>2.1.12</dropwizard.version>
+        <jersey.version>2.35</jersey.version>
+        <logback.version>1.3.14</logback.version>
         <cxf.version>3.4.5</cxf.version>
-        <shiro.version>1.12.0</shiro.version>
+        <shiro.version>1.13.0</shiro.version>
         <prometheus.version>0.12.0</prometheus.version>
         <docker.directory>src/main/docker</docker.directory>
         <timestamp>${maven.build.timestamp}</timestamp>
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+        <management.api.version>0.1.74</management.api.version>
+        <eclipsestore.version>1.3.1</eclipsestore.version>
 
         <!-- Cucumber Scenario Outline Examples listing released versions to test db migration against -->
         <!-- anything added here must first be added as a artifact in build/plugins/plugins@maven-dependency-plugin -->
@@ -158,22 +160,21 @@
                     <groupId>com.boundary</groupId>
                     <artifactId>high-scale-lib</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>1.29</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
-            <version>4.1.70.Final</version>
+            <version>4.1.94.Final</version>
         </dependency>
         <dependency>
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
-            <version>3.11.0</version>
+            <version>3.11.5</version>
             <exclusions>
 	            <exclusion>
 		            <groupId>com.fasterxml.jackson.core</groupId>
@@ -242,7 +243,7 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-configuration2</artifactId>
-            <version>2.1</version>
+            <version>2.10.1</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -274,14 +275,21 @@
         <dependency>
             <groupId>io.k8ssandra</groupId>
             <artifactId>datastax-mgmtapi-client-openapi</artifactId>
-            <version>0.1.70</version>
+            <version>${management.api.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.eclipse.store</groupId>
+            <artifactId>storage-embedded</artifactId>
+            <version>${eclipsestore.version}</version>
+        </dependency>
+
+
         <!--test scope -->
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.13.2</version>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>5.9.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -653,7 +661,7 @@
             <plugin>
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-surefire-plugin</artifactId>
-              <version>2.22.2</version>
+              <version>3.2.5</version>
               <inherited>true</inherited>
               <configuration>
                   <systemPropertyVariables>
