@@ -28,7 +28,7 @@ enableDynamicSeedList: false
 jmxConnectionTimeoutInSeconds: 10
 datacenterAvailability: LOCAL
 percentRepairedCheckIntervalMinutes: 1
-repairManagerSchedulingIntervalSeconds: 0
+repairManagerSchedulingIntervalSeconds: 1
 
 logging:
   level: WARN
@@ -78,3 +78,6 @@ metrics:
 cryptograph:
   type: symmetric
   systemPropertySecret: REAPER_ENCRYPTION_KEY
+
+# Use empty path for in-memory SQLite (non-persistent for tests)
+persistenceStoragePath: ""

@@ -1,23 +1,21 @@
 /*
- * Copyright 2014-2017 Spotify AB
- * Copyright 2016-2019 The Last Pickle Ltd
+ * Copyright 2014-2017 Spotify AB Copyright 2016-2019 The Last Pickle Ltd
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package io.cassandrareaper.management;
 
 import io.cassandrareaper.ReaperException;
+import io.cassandrareaper.core.RepairType;
 import io.cassandrareaper.core.Snapshot;
 import io.cassandrareaper.core.Table;
 import io.cassandrareaper.resources.view.NodesStatus;
@@ -32,13 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+
 import javax.management.JMException;
-import javax.management.openmbean.CompositeData;
-import javax.validation.constraints.NotNull;
 
-import com.datastax.driver.core.VersionNumber;
+import com.datastax.oss.driver.api.core.Version;
+import jakarta.validation.constraints.NotNull;
 import org.apache.cassandra.repair.RepairParallelism;
-
 
 public interface ICassandraManagementProxy {
 
@@ -50,10 +47,7 @@ public interface ICassandraManagementProxy {
   long MIB_FACTOR = 1024 * KIB_FACTOR;
   long GIB_FACTOR = 1024 * MIB_FACTOR;
 
-
-  /**
-   * Terminates all ongoing repairs on the node this proxy is connected to
-   */
+  /** Terminates all ongoing repairs on the node this proxy is connected to */
   void cancelAllRepairs();
 
   String getCassandraVersion();
@@ -104,11 +98,8 @@ public interface ICassandraManagementProxy {
    */
   boolean isRepairRunning() throws JMException;
 
-  /**
-   * Checks if table exists in the cluster by instantiating a MBean for that table.
-   */
+  /** Checks if table exists in the cluster by instantiating a MBean for that table. */
   Map<String, List<String>> listTablesByKeyspace() throws ReaperException;
-
 
   /**
    * Triggers a repair of range (beginToken, endToken] for given keyspace and column family. The
@@ -122,7 +113,7 @@ public interface ICassandraManagementProxy {
       String keyspace,
       RepairParallelism repairParallelism,
       Collection<String> columnFamilies,
-      boolean fullRepair,
+      RepairType repairType,
       Collection<String> datacenters,
       RepairStatusHandler repairStatusHandler,
       List<RingRange> associatedTokens,
@@ -136,15 +127,15 @@ public interface ICassandraManagementProxy {
 
   List<Snapshot> listSnapshots() throws UnsupportedOperationException;
 
-  void takeSnapshot(String var1, String... var2) throws IOException;
+  void takeSnapshot(String snapshotName, String... keyspaces) throws IOException;
 
-  void takeColumnFamilySnapshot(String var1, String var2, String var3) throws IOException;
+  void takeColumnFamilySnapshot(String keyspace, String table, String snapshotName)
+      throws IOException;
 
   Map<String, String> getTokenToEndpointMap();
 
-  void forceKeyspaceCompaction(boolean splitOutput, String keyspaceName, String... columnFamilies) throws IOException,
-      ExecutionException,
-      InterruptedException;
+  void forceKeyspaceCompaction(boolean splitOutput, String keyspaceName, String... columnFamilies)
+      throws IOException, ExecutionException, InterruptedException;
 
   // From CompactionManagerMBean
 
@@ -154,9 +145,6 @@ public interface ICassandraManagementProxy {
 
   // From EndpointSnitchInfoMBean
   String getDatacenter(String var1) throws UnknownHostException;
-
-  // From StreamManagerMBean
-  Set<CompositeData> getCurrentStreams();
 
   /**
    * Compares two Cassandra versions using classes provided by the Datastax Java Driver.
@@ -169,8 +157,8 @@ public interface ICassandraManagementProxy {
    *     "1.10.0".
    */
   static Integer versionCompare(String str1, String str2) {
-    VersionNumber version1 = VersionNumber.parse(str1);
-    VersionNumber version2 = VersionNumber.parse(str2);
+    Version version1 = Version.parse(str1);
+    Version version2 = Version.parse(str2);
 
     return version1.compareTo(version2);
   }
@@ -180,9 +168,10 @@ public interface ICassandraManagementProxy {
   static double parseHumanReadableSize(String readableSize) {
     int spaceNdx = readableSize.indexOf(" ");
 
-    double ret = readableSize.contains(".")
-        ? Double.parseDouble(readableSize.substring(0, spaceNdx))
-        : Double.parseDouble(readableSize.substring(0, spaceNdx).replace(",", "."));
+    double ret =
+        readableSize.contains(".")
+            ? Double.parseDouble(readableSize.substring(0, spaceNdx))
+            : Double.parseDouble(readableSize.substring(0, spaceNdx).replace(",", "."));
 
     switch (readableSize.substring(spaceNdx + 1)) {
       case "GB":
@@ -203,6 +192,4 @@ public interface ICassandraManagementProxy {
         return 0;
     }
   }
-
-
 }

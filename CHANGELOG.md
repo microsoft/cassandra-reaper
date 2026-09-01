@@ -1,5 +1,154 @@
 ## Change Log
 
+### 5.0.0 (2026/07/08 13:21 +00:00)
+- [#1692](https://github.com/thelastpickle/cassandra-reaper/pull/1692) This PR provides fix for the following Netty vulnerabilities: CVE-2026-45416, CVE-2026-44249, CVE-2026-50010 (netty-handler) and CVE-2026-45536 (netty-transport-native-epoll) (#1692) (@dheerajmogaveera)
+- [#1693](https://github.com/thelastpickle/cassandra-reaper/pull/1693) bumped jackson-databind, jackson-core and jackson-annotations to resolve CVE-2026-54512, CVE-2026-54513 and CVE-2026-54514 (#1693) (@dheerajmogaveera)
+- [#1695](https://github.com/thelastpickle/cassandra-reaper/pull/1695) build(deps): bump ch.qos.logback:logback-core in /src/server (#1695) (@dependabot[bot])
+- [#1697](https://github.com/thelastpickle/cassandra-reaper/pull/1697) Fix Reaper image CVEs (#1697) (@gmanojDS)
+- [#1687](https://github.com/thelastpickle/cassandra-reaper/pull/1687) Upgrade to Java 17 + Dropwizard 5 (Jakarta EE 10 / Jetty 12.1) (#1687) (@vasiliy-mikhailov)
+
+### 4.2.7
+- [#1718](https://github.com/thelastpickle/cassandra-reaper/pull/1718) Disable provenance and SBOM attestations for the Reaper UBI image.
+
+### 4.2.6
+- [#1715](https://github.com/thelastpickle/cassandra-reaper/pull/1715) Fix Netty and UBI package vulnerabilities for the 4.2 UBI image.
+
+### 4.2.5 (2026/06/11 11:02 +00:00)
+- [#1683](https://github.com/thelastpickle/cassandra-reaper/pull/1683) fix: scheduled repairs never re-fire after a completed run (#1683) (#1686) (@onnos)
+
+### 4.2.4 (2026/06/02 12:00 +00:00)
+- [#1684](https://github.com/thelastpickle/cassandra-reaper/pull/1684) fix: Fix CVEs in cassandra reaper (#1684) (@ShreyashD333)
+
+### 4.2.3 (2026/05/19 12:45 +00:00)
+- [#1679](https://github.com/thelastpickle/cassandra-reaper/pull/1679) Enable metrics collection through https when hitting TLS endpoints (#1679) (@adejanovski)
+- [#1666](https://github.com/thelastpickle/cassandra-reaper/pull/1666) Send jwt token when editing schedules (#1666) (@Skunnyk)
+- [#1669](https://github.com/thelastpickle/cassandra-reaper/pull/1669) build(deps): bump follow-redirects in /src/ui/theming/bootstrap (#1669) (@dependabot[bot])
+- [#1667](https://github.com/thelastpickle/cassandra-reaper/pull/1667) build(deps): bump org.apache.cassandra:cassandra-all in /src/server (#1667) (@dependabot[bot])
+
+### 4.2.2 (2026/05/13 06:27 +00:00)
+- [#1672](https://github.com/thelastpickle/cassandra-reaper/pull/1672) Populate schedule metrics on startup (#1672) (@adejanovski)
+- [#1668](https://github.com/thelastpickle/cassandra-reaper/pull/1668) fix: remove JVM exit on SchedulingManager errors (#1668) (@artsiom-bukhautsou)
+- [#1661](https://github.com/thelastpickle/cassandra-reaper/pull/1661) Fix metric registry leak in CompactionProxy due to unique executor names (#1661) (@a-pashchenko)
+
+### 4.2.1 (2026/03/26 08:00 +00:00)
+- [#1664](https://github.com/thelastpickle/cassandra-reaper/pull/1664) Fix: Handle null root in EclipseStore to SQLite migration (#1664) (@gmanojDS)
+- [#1656](https://github.com/thelastpickle/cassandra-reaper/pull/1656) Bump jackson from 2.20.0 to 2.21.1 to address GHSA-72hv-8253-57qq (#1656) (@tengu-alt)
+- [#1650](https://github.com/thelastpickle/cassandra-reaper/pull/1650) Fix NPE in RetryPolicyImpl from null request and nullable isIdempotent (#1650) (@emptyhammond)
+
+### 4.2.0 (2026/01/30 08:43 +00:00)
+- [#1644](https://github.com/thelastpickle/cassandra-reaper/pull/1644) Upgrade Logback to 1.5.25 to address CVE-2026-1225 (#1644) (@tengu-alt)
+- [#1623](https://github.com/thelastpickle/cassandra-reaper/pull/1623) Add a new unfulfilledRepairSchedule metric to track efficiently repairs complete in due time (#1623) (@adejanovski)
+- [#1630](https://github.com/thelastpickle/cassandra-reaper/pull/1630) Migrates in-memory storage backend from EclipseStore to SQLite (#1630) (@gmanojDS)
+- [#1643](https://github.com/thelastpickle/cassandra-reaper/pull/1643) Docs update for 4.2.0 (#1643) (@adejanovski)
+
+### 4.1.1 (2026/01/20 16:50 +00:00)
+- [#1621](https://github.com/thelastpickle/cassandra-reaper/pull/1621) fix: upgrade org.jetbrains.kotlin:kotlin-stdlib from 2.2.10 to 2.2.20 (#1621) (@adejanovski)
+- [#1622](https://github.com/thelastpickle/cassandra-reaper/pull/1622) fix: upgrade com.fasterxml.jackson.datatype:jackson-datatype-joda from 2.19.0 to 2.20.0 (#1622) (@adejanovski)
+- [#1642](https://github.com/thelastpickle/cassandra-reaper/pull/1642) Add missing REAPER_MGMT_API_METRICS_TLS var (#1642) (@burmanm)
+- [#1640](https://github.com/thelastpickle/cassandra-reaper/pull/1640) Switch spreaper CLI to dropwizard jwt-based authentication (#1640) (@Skunnyk)
+
+### 4.1.0 (2026/01/07 16:25 +00:00)
+- [#1639](https://github.com/thelastpickle/cassandra-reaper/pull/1639) Fix adminConnector to be http instead of https (missing commit from PR 1637) (#1639) (@burmanm)
+- [#1637](https://github.com/thelastpickle/cassandra-reaper/pull/1637) Add TLS configuration abilities to the server for Docker container (#1637) (@burmanm)
+- [#1631](https://github.com/thelastpickle/cassandra-reaper/pull/1631) Fix vulnerability GHSA-25qh-j22f-pwp8 logback version was bumped (#1631) (@tengu-alt)
+- [#1634](https://github.com/thelastpickle/cassandra-reaper/pull/1634) Use mTLS client for metrics endpoint also if configured (#1634) (@burmanm)
+- [#1626](https://github.com/thelastpickle/cassandra-reaper/pull/1626) Unregister Cassandra healthchecks on the schema migration sessions  (#1626) (@a-pashchenko)
+
+### 4.0.2 (2026/01/26 09:35 +00:00)
+- [#1621](https://github.com/thelastpickle/cassandra-reaper/pull/1621) fix: upgrade org.jetbrains.kotlin:kotlin-stdlib from 2.2.10 to 2.2.20 (#1621) (@adejanovski)
+- [#1622](https://github.com/thelastpickle/cassandra-reaper/pull/1622) fix: upgrade com.fasterxml.jackson.datatype:jackson-datatype-joda from 2.19.0 to 2.20.0 (#1622) (@adejanovski)
+- [#1640](https://github.com/thelastpickle/cassandra-reaper/pull/1640) Switch spreaper CLI to dropwizard jwt-based authentication (#1640) (@Skunnyk)
+- [#1631](https://github.com/thelastpickle/cassandra-reaper/pull/1631) Fix vulnerability GHSA-25qh-j22f-pwp8 logback version was bumped (#1631) (@tengu-alt)
+
+### 4.0.1 (2025/10/09 15:00 +00:00)
+- [#1619](https://github.com/thelastpickle/cassandra-reaper/pull/1619) Unregister CqlSession from HealthCheckRegistry after close (#1619) (@a-pashchenko)
+- [#1612](https://github.com/thelastpickle/cassandra-reaper/pull/1612) Fix the intensity rule which wasn't properly applied (#1612) (@adejanovski)
+
+### 4.0.0 (2025/09/25 13:52 +00:00)
+- [#1586](https://github.com/thelastpickle/cassandra-reaper/pull/1586) fix: upgrade com.fasterxml.jackson.datatype:jackson-datatype-joda from 2.18.4 to 2.19.0 (#1586) (@adejanovski)
+- [#1603](https://github.com/thelastpickle/cassandra-reaper/pull/1603) fix: upgrade com.squareup.okio:okio-jvm from 3.13.0 to 3.15.0 (#1603) (@adejanovski)
+- [#1608](https://github.com/thelastpickle/cassandra-reaper/pull/1608) fix: upgrade org.jetbrains.kotlin:kotlin-stdlib from 2.2.0 to 2.2.10 (#1608) (@adejanovski)
+- [#1609](https://github.com/thelastpickle/cassandra-reaper/pull/1609) fix: upgrade io.netty:netty-handler from 4.2.3.Final to 4.2.4.Final (#1609) (@adejanovski)
+- [#1604](https://github.com/thelastpickle/cassandra-reaper/pull/1604) fix: upgrade io.netty:netty-handler from 4.2.2.Final to 4.2.3.Final (#1604) (@adejanovski)
+- [#1606](https://github.com/thelastpickle/cassandra-reaper/pull/1606) fix: upgrade io.dropwizard:dropwizard-core from 4.0.14 to 4.0.15 (#1606) (@adejanovski)
+
+### 4.0.0-rc1 (2025/07/29 15:16 +00:00)
+- [#1602](https://github.com/thelastpickle/cassandra-reaper/pull/1602) Upgrade commons-lang3 to 3.18.0 to fix CVE-2025-48924 (#1602) (@adejanovski)
+- [#1601](https://github.com/thelastpickle/cassandra-reaper/pull/1601) Node sass arm build fix (#1601) (@mamccorm)
+- [#1597](https://github.com/thelastpickle/cassandra-reaper/pull/1597) fix: upgrade com.squareup.okio:okio-jvm from 3.12.0 to 3.13.0 (#1597) (@adejanovski)
+- [#1593](https://github.com/thelastpickle/cassandra-reaper/pull/1593) fix: upgrade io.netty:netty-handler from 4.2.1.Final to 4.2.2.Final (#1593) (@adejanovski)
+- [65a8610](https://github.com/thelastpickle/cassandra-reaper/commit/65a8610ecdc03f40d572cb678c0a9a9acf0ac334) Ninja fix the corretto image (@adejanovski)
+- [#1599](https://github.com/thelastpickle/cassandra-reaper/pull/1599) Build separate Corretto and UBI9 images (#1599) (@adejanovski)
+- [#1598](https://github.com/thelastpickle/cassandra-reaper/pull/1598) Update the dockerfile to produce ubi9 based images (#1598) (@adejanovski)
+- [#1596](https://github.com/thelastpickle/cassandra-reaper/pull/1596) fix: upgrade org.jetbrains.kotlin:kotlin-stdlib from 2.1.21 to 2.2.0 (#1596) (@adejanovski)
+
+### 4.0.0-beta4 (2025/07/01 06:06 +00:00)
+- [#1591](https://github.com/thelastpickle/cassandra-reaper/pull/1591) Update the codecov actions and set the token (#1591) (@adejanovski)
+- [#1589](https://github.com/thelastpickle/cassandra-reaper/pull/1589) fix: upgrade org.apache.cassandra:cassandra-all from 5.0.3 to 5.0.4 (#1589) (@adejanovski)
+- [#1587](https://github.com/thelastpickle/cassandra-reaper/pull/1587) fix: upgrade io.dropwizard:dropwizard-core from 4.0.13 to 4.0.14 (#1587) (@adejanovski)
+- [#1574](https://github.com/thelastpickle/cassandra-reaper/pull/1574) Shuffle segments during scheduling to avoid blockage if a segment can't run immediately (#1574) (@adejanovski)
+- [#1584](https://github.com/thelastpickle/cassandra-reaper/pull/1584) fix: upgrade com.squareup.okio:okio-jvm from 3.4.0 to 3.12.0 (#1584) (@adejanovski)
+- [#1583](https://github.com/thelastpickle/cassandra-reaper/pull/1583) fix: upgrade org.jetbrains.kotlin:kotlin-stdlib from 2.1.0 to 2.1.21 (#1583) (@adejanovski)
+- [#1582](https://github.com/thelastpickle/cassandra-reaper/pull/1582) fix: upgrade io.netty:netty-handler from 4.1.121.Final to 4.2.1.Final (#1582) (@adejanovski)
+- [#1581](https://github.com/thelastpickle/cassandra-reaper/pull/1581) fix: upgrade org.glassfish.jersey.core:jersey-client from 3.0.17 to 3.1.10 (#1581) (@adejanovski)
+
+### 4.0.0-beta3 (2025/06/13 12:20 +00:00)
+- [#1579](https://github.com/thelastpickle/cassandra-reaper/pull/1579) Fix remaining CVEs and remove some table properties which can cause compatibility issues (#1579) (@adejanovski)
+
+### 4.0.0-beta2 (2025/06/12 10:03 +00:00)
+- [c867473](https://github.com/thelastpickle/cassandra-reaper/commit/c86747343ef87dfbab9cad284bd2971a60f13203) Migrate from Apache Shiro to Dropwizard JWT-based authentication (@adejanovski)
+- [#1573](https://github.com/thelastpickle/cassandra-reaper/pull/1573) Big reformat (#1573) (@adejanovski)
+- [#1572](https://github.com/thelastpickle/cassandra-reaper/pull/1572) Add Dockerfile env var for purge configuration to control repair run retention (#1572) (@adejanovski)
+- [#1569](https://github.com/thelastpickle/cassandra-reaper/pull/1569) Upgrade cassandra-all dependency and remove streaming bits (#1569) (@adejanovski)
+- [#1554](https://github.com/thelastpickle/cassandra-reaper/pull/1554) Add clusterName to JMX connection logs (#1554) (@andresbeckruiz)
+
+### 4.0.0-beta1 (2025/05/06 15:08 +00:00)
+- [#1556](https://github.com/thelastpickle/cassandra-reaper/pull/1556) Upgrade Dropwizard and dropwizard-cassandra to v3 (#1556) (@adejanovski)
+- [#1550](https://github.com/thelastpickle/cassandra-reaper/pull/1550) Upgrade GH actions (#1550) (@adejanovski)
+- [640307f](https://github.com/thelastpickle/cassandra-reaper/commit/640307ff9a387a4aace4562a3dc730bb9cdfc42d) Upgrade the upload-artifact github action to v4 (@adejanovski)
+
+### 3.8.0 (2025/02/02 07:56 +00:00)
+- [#1538](https://github.com/thelastpickle/cassandra-reaper/pull/1538) Remove python from the Docker image (#1538) (@adejanovski)
+- [#1521](https://github.com/thelastpickle/cassandra-reaper/pull/1521) Fail repair after additive change in cluster topology (#1521) (@andresbeckruiz)
+
+### 3.7.1 (2025/01/06 07:19 +00:00)
+- [#1535](https://github.com/thelastpickle/cassandra-reaper/pull/1535) Fix bug in replica lock release in the mem store (#1535) (@adejanovski)
+- [#1533](https://github.com/thelastpickle/cassandra-reaper/pull/1533) Memory store segment leader election (#1533) (@adejanovski)
+
+### 3.7.0 (2024/11/15 12:02 +00:00)
+- [#1527](https://github.com/thelastpickle/cassandra-reaper/pull/1527) Upgrade the base docker image from Corretto 11.0.20 to 11.0.25 (#1527) (@adejanovski)
+- [#1510](https://github.com/thelastpickle/cassandra-reaper/pull/1510) update doc for persistenceStoragePath (#1510) (@SarthakSahu)
+- [#1457](https://github.com/thelastpickle/cassandra-reaper/pull/1457) Bump io.netty:netty-handler in /src/server (#1457) (@dependabot[bot])
+- [#1461](https://github.com/thelastpickle/cassandra-reaper/pull/1461) Bump org.apache.shiro:shiro-core from 1.12.0 to 1.13.0 in /src/server (#1461) (@dependabot[bot])
+- [#1524](https://github.com/thelastpickle/cassandra-reaper/pull/1524) Allow setting up per-cluster TLS connections (#1524) (@rzvoncek)
+- [#1523](https://github.com/thelastpickle/cassandra-reaper/pull/1523) Update java driver 3.11.0 to 3.11.5 (#1523) (@bschoening)
+- [#1516](https://github.com/thelastpickle/cassandra-reaper/pull/1516) Switch CI to docker-compose v2 (#1516) (@adejanovski)
+- [#1509](https://github.com/thelastpickle/cassandra-reaper/pull/1509) Subrange incremental repair (#1509) (@adejanovski)
+
+### 3.6.1 (2024/06/11 07:14 +00:00)
+- [#1507](https://github.com/thelastpickle/cassandra-reaper/pull/1507) Allow mounting a volume to host the config and enable read only root FS (#1507) (@adejanovski)
+
+### 3.6.0 (2024/04/18 08:53 +00:00)
+- [#1500](https://github.com/thelastpickle/cassandra-reaper/pull/1500) Upgrade snakeyaml (#1500) (@emerkle826)
+- [#1499](https://github.com/thelastpickle/cassandra-reaper/pull/1499) Update Dockerfile to specify restricted Java temp directory (#1499) (@emerkle826)
+- [#1498](https://github.com/thelastpickle/cassandra-reaper/pull/1498) Update Dockerfile base image (#1498) (@emerkle826)
+- [#1492](https://github.com/thelastpickle/cassandra-reaper/pull/1492) Fix High/Critical CVEs (#1492) (@emerkle826)
+- [#1484](https://github.com/thelastpickle/cassandra-reaper/pull/1484) Add EclipseStore to memory storage for persistence (#1484) (@emerkle826)
+- [#1481](https://github.com/thelastpickle/cassandra-reaper/pull/1481) Upgrade dropwizard.version to 2.1.12 (#1481) (@FieteO)
+- [#1482](https://github.com/thelastpickle/cassandra-reaper/pull/1482) Generate SHA256 digests when packaging RPM files. (#1482) (@ernstae)
+- [#1478](https://github.com/thelastpickle/cassandra-reaper/pull/1478) Ignore repair_run_by_cluster_v2 rows with no corresponding repair (#1478) (@SesquipedalianDefenestrator)
+- [#1479](https://github.com/thelastpickle/cassandra-reaper/pull/1479) Improve idempotency of db creation scripts (#1479) (@FieteO)
+- [#1477](https://github.com/thelastpickle/cassandra-reaper/pull/1477) Set segment count per node to consistent value across defaults and docs (#1477) (@SesquipedalianDefenestrator)
+- [#1470](https://github.com/thelastpickle/cassandra-reaper/pull/1470) Fix spelling (#1470) (@Hagfjall)
+
+### 3.5.0 (2024/02/22 08:49 +00:00)
+- [#1467](https://github.com/thelastpickle/cassandra-reaper/pull/1467) Add dotenv dependency to the build image (#1467) (@adejanovski)
+- [#1466](https://github.com/thelastpickle/cassandra-reaper/pull/1466) Watch the keystore and truststore directories for changes (#1466) (@burmanm)
+- [#1415](https://github.com/thelastpickle/cassandra-reaper/pull/1415) Add mTLS settings to ApiClient (#1415) (@burmanm)
+- [#1459](https://github.com/thelastpickle/cassandra-reaper/pull/1459) Fix webui login not working in some cases (#1459) (@adejanovski)
+- [#1453](https://github.com/thelastpickle/cassandra-reaper/pull/1453) Pin CI to python 3.11 (#1453) (@adejanovski)
+- [#1267](https://github.com/thelastpickle/cassandra-reaper/pull/1267) Don't strip dash and underscore from metrics' tags (#1267) (@max-melentyev)
+- [#1443](https://github.com/thelastpickle/cassandra-reaper/pull/1443) Remove duplicated `setTimeout` in `error` callback (#1443) (@upsilon2gamma)
 
 ### 3.4.0 (2023/10/25 08:12 +00:00)
 - [#1433](https://github.com/thelastpickle/cassandra-reaper/pull/1433) Filter out Stargate/coordinator nodes from calls to get live nodes or list tokens (#1433) (@adejanovski)

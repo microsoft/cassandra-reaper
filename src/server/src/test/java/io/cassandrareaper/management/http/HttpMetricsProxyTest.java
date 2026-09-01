@@ -31,6 +31,14 @@ import java.util.Optional;
 
 import javax.management.JMException;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.datastax.mgmtapi.client.api.DefaultApi;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
@@ -38,16 +46,9 @@ import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.util.collections.Sets;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 public class HttpMetricsProxyTest {
 
@@ -61,18 +62,22 @@ public class HttpMetricsProxyTest {
     URL url = Resources.getResource("metric-samples/prom-metrics.txt");
     String data = Resources.toString(url, Charsets.UTF_8);
 
-    List<GenericMetric> parsedMetrics = metricsProxy.parsePrometheusMetrics(
-        HttpMetricsProxy.THREAD_POOL_METRICS_PREFIX, data, Optional.empty());
+    List<GenericMetric> parsedMetrics =
+        metricsProxy.parsePrometheusMetrics(
+            HttpMetricsProxy.THREAD_POOL_METRICS_PREFIX, data, Optional.empty());
     assertTrue("Metrics were parsed", !parsedMetrics.isEmpty());
-    //assertEquals("Right number of metrics for jvm_threads_state", 0, parsedMetrics.get("jvm_threads_state").size());
-    assertEquals("Right number of metrics for org_apache_cassandra_metrics_thread_pools_pending_tasks",
+    // assertEquals("Right number of metrics for jvm_threads_state", 0,
+    // parsedMetrics.get("jvm_threads_state").size());
+    assertEquals(
+        "Right number of metrics for org_apache_cassandra_metrics_thread_pools_pending_tasks",
         148,
-        parsedMetrics.stream().filter(
-            metric -> metric.getMetricType().equals("ThreadPools")
-            && metric.getMetricName().equals("PendingTasks")).count());
-    assertEquals("Right number of thread pools metrics",
-        2370,
-        parsedMetrics.size());
+        parsedMetrics.stream()
+            .filter(
+                metric ->
+                    metric.getMetricType().equals("ThreadPools")
+                        && metric.getMetricName().equals("PendingTasks"))
+            .count());
+    assertEquals("Right number of thread pools metrics", 2370, parsedMetrics.size());
   }
 
   @Test
@@ -143,14 +148,13 @@ public class HttpMetricsProxyTest {
     labels.put("pool_name", "TestPool");
     double value = 10.0;
 
-
     DefaultApi mockClient = Mockito.mock(DefaultApi.class);
 
     HttpCassandraManagementProxy proxy = HttpCassandraManagementProxyTest.mockProxy(mockClient);
     HttpMetricsProxy metricsProxy = HttpMetricsProxy.create(proxy, Mockito.mock(Node.class));
     // Act
-    Optional<GenericMetric> result
-        = metricsProxy.parseMetric(
+    Optional<GenericMetric> result =
+        metricsProxy.parseMetric(
             Mockito.mock(Node.class),
             metricName,
             labels,
@@ -176,13 +180,12 @@ public class HttpMetricsProxyTest {
     labels.put("message_type", "TestMessage");
     double value = 123.45;
 
-
     DefaultApi mockClient = Mockito.mock(DefaultApi.class);
 
     HttpCassandraManagementProxy proxy = HttpCassandraManagementProxyTest.mockProxy(mockClient);
     HttpMetricsProxy metricsProxy = HttpMetricsProxy.create(proxy, Mockito.mock(Node.class));
-    Optional<GenericMetric> result
-        = metricsProxy.parseMetric(
+    Optional<GenericMetric> result =
+        metricsProxy.parseMetric(
             Mockito.mock(Node.class),
             metricName,
             labels,
@@ -208,13 +211,12 @@ public class HttpMetricsProxyTest {
     labels.put("keyspace", "my_keyspace");
     double value = 123.45;
 
-
     DefaultApi mockClient = Mockito.mock(DefaultApi.class);
 
     HttpCassandraManagementProxy proxy = HttpCassandraManagementProxyTest.mockProxy(mockClient);
     HttpMetricsProxy metricsProxy = HttpMetricsProxy.create(proxy, Mockito.mock(Node.class));
-    Optional<GenericMetric> result
-        = metricsProxy.parseMetric(
+    Optional<GenericMetric> result =
+        metricsProxy.parseMetric(
             Mockito.mock(Node.class),
             metricName,
             labels,
@@ -245,8 +247,8 @@ public class HttpMetricsProxyTest {
     HttpCassandraManagementProxy proxy = HttpCassandraManagementProxyTest.mockProxy(mockClient);
     HttpMetricsProxy metricsProxy = HttpMetricsProxy.create(proxy, Mockito.mock(Node.class));
     // Act
-    Optional<GenericMetric> result
-        = metricsProxy.parseMetric(
+    Optional<GenericMetric> result =
+        metricsProxy.parseMetric(
             Mockito.mock(Node.class),
             metricName,
             labels,
@@ -261,14 +263,35 @@ public class HttpMetricsProxyTest {
   @SuppressWarnings("checkstyle:LineLength")
   @Test
   public void testCollectTpStats() throws IOException, JMException {
-    String responseBodyStr = "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"TPC\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"ValidationExecutor\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"AntiCompactionExecutor\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"AntiEntropyStage\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"TPC\",} 0.0\n"
-          + "org_apache_cassandra_metrics_keyspace_view_read_time_solr_admin_bucket{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",le=\"3379391\",} 0.0\n";
+    String responseBodyStr =
+        "org_apache_cassandra_metrics_thread_pools_pending_tasks{"
+            + "host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\","
+            + "datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\","
+            + "pool_type=\"internal\",pool_name=\"TPC\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"ValidationExecutor\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"AntiCompactionExecutor\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"AntiEntropyStage\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"TPC\",} 0.0\n"
+            + "org_apache_cassandra_metrics_keyspace_view_read_time_solr_admin_bucket{"
+            + "host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\","
+            + "rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",le=\"3379391\",} 0.0\n";
 
     OkHttpClient httpClient = Mockito.mock(OkHttpClient.class);
+    OkHttpClient.Builder clientBuilder = Mockito.mock(OkHttpClient.Builder.class);
+    when(clientBuilder.build()).thenReturn(httpClient);
+
     Call call = Mockito.mock(Call.class);
     Response response = Mockito.mock(Response.class);
 
@@ -280,19 +303,20 @@ public class HttpMetricsProxyTest {
     when(responseBody.string()).thenReturn(responseBodyStr);
     when(response.body()).thenReturn(responseBody);
 
-    HttpCassandraManagementProxy httpManagementProxy = Mockito.mock(HttpCassandraManagementProxy.class);
+    HttpCassandraManagementProxy httpManagementProxy =
+        Mockito.mock(HttpCassandraManagementProxy.class);
     when(httpManagementProxy.getMetricsPort()).thenReturn(9000);
     when(httpManagementProxy.getHost()).thenReturn("172.18.0.3");
+    when(httpManagementProxy.getMetricsClientBuilder()).thenReturn(clientBuilder);
 
-    Node node = Node.builder()
-          .withHostname("172.18.0.3")
-          .withCluster(Cluster.builder()
-          .withName("test")
-          .withSeedHosts(Sets.newSet("127.0.0.1"))
-          .build())
-        .build();
+    Node node =
+        Node.builder()
+            .withHostname("172.18.0.3")
+            .withCluster(
+                Cluster.builder().withName("test").withSeedHosts(Sets.newSet("127.0.0.1")).build())
+            .build();
 
-    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node, () -> httpClient);
+    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node);
     List<GenericMetric> tpStats = httpMetricsProxy.collectTpStats();
     assertEquals(5, tpStats.size());
     assertEquals("org.apache.cassandra.metrics", tpStats.get(0).getMetricDomain());
@@ -304,15 +328,40 @@ public class HttpMetricsProxyTest {
   @SuppressWarnings("checkstyle:LineLength")
   @Test
   public void testCollectTpPendingTasks() throws JMException, IOException, ReaperException {
-    String responseBodyStr = "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"TPC\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"ValidationExecutor\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"AntiCompactionExecutor\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"AntiEntropyStage\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"TPC\",} 0.0\n"
-          + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\",pool_name=\"CompactionExecutor\",} 0.0\n"
-          + "org_apache_cassandra_metrics_keyspace_view_read_time_solr_admin_bucket{host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",le=\"3379391\",} 0.0\n";
+    String responseBodyStr =
+        "org_apache_cassandra_metrics_thread_pools_pending_tasks{"
+            + "host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\","
+            + "rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"TPC\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"ValidationExecutor\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"AntiCompactionExecutor\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"AntiEntropyStage\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"TPC\",} 0.0\n"
+            + "org_apache_cassandra_metrics_thread_pools_pending_tasks{host=\"eae3481e-f803-49b5-8516-7ff271104db5\","
+            + "instance=\"172.18.0.3\",cluster=\"test\",datacenter=\"dc1\",rack=\"default\","
+            + "pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\",pool_type=\"internal\","
+            + "pool_name=\"CompactionExecutor\",} 0.0\n"
+            + "org_apache_cassandra_metrics_keyspace_view_read_time_solr_admin_bucket{"
+            + "host=\"eae3481e-f803-49b5-8516-7ff271104db5\",instance=\"172.18.0.3\",cluster=\"test\","
+            + "datacenter=\"dc1\",rack=\"default\",pod_name=\"test-dc1-default-sts-0\",node_name=\"mc-0-worker3\","
+            + "le=\"3379391\",} 0.0\n";
 
     OkHttpClient httpClient = Mockito.mock(OkHttpClient.class);
+    OkHttpClient.Builder clientBuilder = Mockito.mock(OkHttpClient.Builder.class);
+    when(clientBuilder.build()).thenReturn(httpClient);
+
     Call call = Mockito.mock(Call.class);
     Response response = Mockito.mock(Response.class);
 
@@ -324,19 +373,20 @@ public class HttpMetricsProxyTest {
     when(responseBody.string()).thenReturn(responseBodyStr);
     when(response.body()).thenReturn(responseBody);
 
-    HttpCassandraManagementProxy httpManagementProxy = Mockito.mock(HttpCassandraManagementProxy.class);
+    HttpCassandraManagementProxy httpManagementProxy =
+        Mockito.mock(HttpCassandraManagementProxy.class);
     when(httpManagementProxy.getHost()).thenReturn("172.18.0.3");
     when(httpManagementProxy.getMetricsPort()).thenReturn(9000);
+    when(httpManagementProxy.getMetricsClientBuilder()).thenReturn(clientBuilder);
 
-    Node node = Node.builder()
-          .withHostname("172.18.0.3")
-          .withCluster(Cluster.builder()
-          .withName("test")
-          .withSeedHosts(Sets.newSet("127.0.0.1"))
-          .build())
-        .build();
+    Node node =
+        Node.builder()
+            .withHostname("172.18.0.3")
+            .withCluster(
+                Cluster.builder().withName("test").withSeedHosts(Sets.newSet("127.0.0.1")).build())
+            .build();
 
-    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node, () -> httpClient);
+    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node);
 
     List<GenericMetric> pendingTasks = httpMetricsProxy.collectTpPendingTasks();
     assertEquals(1, pendingTasks.size()); // there's only 1 that is a CompactionExecutor metric
@@ -344,5 +394,197 @@ public class HttpMetricsProxyTest {
     assertEquals("ThreadPools", pendingTasks.get(0).getMetricType());
     assertEquals("CompactionExecutor", pendingTasks.get(0).getMetricScope());
     assertEquals("PendingTasks", pendingTasks.get(0).getMetricName());
+  }
+
+  /**
+   * Test that HTTP scheme is used when TLS is disabled for metrics. Verifies the URL scheme is
+   * "http" when metricsTlsEnabled is false.
+   */
+  @Test
+  public void testCollectMetricsUsesHttpSchemeWhenTlsDisabled() throws IOException, JMException {
+    String responseBodyStr =
+        "org_apache_cassandra_metrics_thread_pools_pending_tasks{pool_name=\"TestPool\"} 0.0\n";
+
+    OkHttpClient httpClient = Mockito.mock(OkHttpClient.class);
+    OkHttpClient.Builder clientBuilder = Mockito.mock(OkHttpClient.Builder.class);
+    when(clientBuilder.build()).thenReturn(httpClient);
+
+    Call call = Mockito.mock(Call.class);
+    Response response = Mockito.mock(Response.class);
+
+    when(httpClient.newCall(any())).thenReturn(call);
+    when(call.execute()).thenReturn(response);
+    when(response.isSuccessful()).thenReturn(true);
+
+    ResponseBody responseBody = Mockito.mock(ResponseBody.class);
+    when(responseBody.string()).thenReturn(responseBodyStr);
+    when(response.body()).thenReturn(responseBody);
+
+    HttpCassandraManagementProxy httpManagementProxy =
+        Mockito.mock(HttpCassandraManagementProxy.class);
+    when(httpManagementProxy.getHost()).thenReturn("172.18.0.3");
+    when(httpManagementProxy.getMetricsPort()).thenReturn(9000);
+    when(httpManagementProxy.getMetricsClientBuilder()).thenReturn(clientBuilder);
+    when(httpManagementProxy.isMetricsTlsEnabled()).thenReturn(false); // TLS disabled
+
+    Node node =
+        Node.builder()
+            .withHostname("172.18.0.3")
+            .withCluster(
+                Cluster.builder().withName("test").withSeedHosts(Sets.newSet("127.0.0.1")).build())
+            .build();
+
+    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node);
+    httpMetricsProxy.collectTpStats();
+
+    // Verify that the request was made with HTTP scheme
+    verify(httpClient)
+        .newCall(
+            argThat(
+                request ->
+                    request.url().scheme().equals("http")
+                        && request.url().host().equals("172.18.0.3")
+                        && request.url().port() == 9000));
+  }
+
+  /**
+   * Test that HTTPS scheme is used when TLS is enabled for metrics. Verifies the URL scheme is
+   * "https" when metricsTlsEnabled is true.
+   */
+  @Test
+  public void testCollectMetricsUsesHttpsSchemeWhenTlsEnabled() throws IOException, JMException {
+    String responseBodyStr =
+        "org_apache_cassandra_metrics_thread_pools_pending_tasks{pool_name=\"TestPool\"} 0.0\n";
+
+    OkHttpClient httpClient = Mockito.mock(OkHttpClient.class);
+    OkHttpClient.Builder clientBuilder = Mockito.mock(OkHttpClient.Builder.class);
+    when(clientBuilder.build()).thenReturn(httpClient);
+
+    Call call = Mockito.mock(Call.class);
+    Response response = Mockito.mock(Response.class);
+
+    when(httpClient.newCall(any())).thenReturn(call);
+    when(call.execute()).thenReturn(response);
+    when(response.isSuccessful()).thenReturn(true);
+
+    ResponseBody responseBody = Mockito.mock(ResponseBody.class);
+    when(responseBody.string()).thenReturn(responseBodyStr);
+    when(response.body()).thenReturn(responseBody);
+
+    HttpCassandraManagementProxy httpManagementProxy =
+        Mockito.mock(HttpCassandraManagementProxy.class);
+    when(httpManagementProxy.getHost()).thenReturn("172.18.0.3");
+    when(httpManagementProxy.getMetricsPort()).thenReturn(9000);
+    when(httpManagementProxy.getMetricsClientBuilder()).thenReturn(clientBuilder);
+    when(httpManagementProxy.isMetricsTlsEnabled()).thenReturn(true); // TLS enabled
+
+    Node node =
+        Node.builder()
+            .withHostname("172.18.0.3")
+            .withCluster(
+                Cluster.builder().withName("test").withSeedHosts(Sets.newSet("127.0.0.1")).build())
+            .build();
+
+    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node);
+    httpMetricsProxy.collectTpStats();
+
+    // Verify that the request was made with HTTPS scheme
+    verify(httpClient)
+        .newCall(
+            argThat(
+                request ->
+                    request.url().scheme().equals("https")
+                        && request.url().host().equals("172.18.0.3")
+                        && request.url().port() == 9000));
+  }
+
+  /**
+   * Test that dropped messages collection uses HTTP when TLS is disabled. Ensures consistency
+   * across different metric collection methods.
+   */
+  @Test
+  public void testCollectDroppedMessagesUsesHttpWhenTlsDisabled() throws IOException, JMException {
+    String responseBodyStr =
+        "org_apache_cassandra_metrics_dropped_message_dropped_total{message_type=\"READ\"} 5.0\n";
+
+    OkHttpClient httpClient = Mockito.mock(OkHttpClient.class);
+    OkHttpClient.Builder clientBuilder = Mockito.mock(OkHttpClient.Builder.class);
+    when(clientBuilder.build()).thenReturn(httpClient);
+
+    Call call = Mockito.mock(Call.class);
+    Response response = Mockito.mock(Response.class);
+
+    when(httpClient.newCall(any())).thenReturn(call);
+    when(call.execute()).thenReturn(response);
+    when(response.isSuccessful()).thenReturn(true);
+
+    ResponseBody responseBody = Mockito.mock(ResponseBody.class);
+    when(responseBody.string()).thenReturn(responseBodyStr);
+    when(response.body()).thenReturn(responseBody);
+
+    HttpCassandraManagementProxy httpManagementProxy =
+        Mockito.mock(HttpCassandraManagementProxy.class);
+    when(httpManagementProxy.getHost()).thenReturn("172.18.0.3");
+    when(httpManagementProxy.getMetricsPort()).thenReturn(9000);
+    when(httpManagementProxy.getMetricsClientBuilder()).thenReturn(clientBuilder);
+    when(httpManagementProxy.isMetricsTlsEnabled()).thenReturn(false);
+
+    Node node =
+        Node.builder()
+            .withHostname("172.18.0.3")
+            .withCluster(
+                Cluster.builder().withName("test").withSeedHosts(Sets.newSet("127.0.0.1")).build())
+            .build();
+
+    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node);
+    httpMetricsProxy.collectDroppedMessages();
+
+    // Verify HTTP scheme is used
+    verify(httpClient).newCall(argThat(request -> request.url().scheme().equals("http")));
+  }
+
+  /**
+   * Test that latency metrics collection uses HTTPS when TLS is enabled. Ensures consistency across
+   * different metric collection methods.
+   */
+  @Test
+  public void testCollectLatencyMetricsUsesHttpsWhenTlsEnabled() throws IOException, JMException {
+    String responseBodyStr =
+        "org_apache_cassandra_metrics_client_request_latency_total{request_type=\"Read\"} 10.0\n";
+
+    OkHttpClient httpClient = Mockito.mock(OkHttpClient.class);
+    OkHttpClient.Builder clientBuilder = Mockito.mock(OkHttpClient.Builder.class);
+    when(clientBuilder.build()).thenReturn(httpClient);
+
+    Call call = Mockito.mock(Call.class);
+    Response response = Mockito.mock(Response.class);
+
+    when(httpClient.newCall(any())).thenReturn(call);
+    when(call.execute()).thenReturn(response);
+    when(response.isSuccessful()).thenReturn(true);
+
+    ResponseBody responseBody = Mockito.mock(ResponseBody.class);
+    when(responseBody.string()).thenReturn(responseBodyStr);
+    when(response.body()).thenReturn(responseBody);
+
+    HttpCassandraManagementProxy httpManagementProxy =
+        Mockito.mock(HttpCassandraManagementProxy.class);
+    when(httpManagementProxy.getHost()).thenReturn("172.18.0.3");
+    when(httpManagementProxy.getMetricsPort()).thenReturn(9000);
+    when(httpManagementProxy.getMetricsClientBuilder()).thenReturn(clientBuilder);
+    when(httpManagementProxy.isMetricsTlsEnabled()).thenReturn(true);
+
+    Node node =
+        Node.builder()
+            .withHostname("172.18.0.3")
+            .withCluster(
+                Cluster.builder().withName("test").withSeedHosts(Sets.newSet("127.0.0.1")).build())
+            .build();
+
+    HttpMetricsProxy httpMetricsProxy = HttpMetricsProxy.create(httpManagementProxy, node);
+    httpMetricsProxy.collectLatencyMetrics();
+
+    // Verify HTTPS scheme is used
+    verify(httpClient).newCall(argThat(request -> request.url().scheme().equals("https")));
   }
 }

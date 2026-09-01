@@ -27,13 +27,13 @@ on:
 jobs:
   build:
     name: Build Reaper
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
-      JACOCO_VERSION: 0.8.6
+      JACOCO_VERSION: 0.8.12
       REAPER_ENCRYPTION_KEY: SECRET_KEY
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -41,22 +41,36 @@ jobs:
       - name: Build Reaper
         run: |
           MAVEN_OPTS="-Xmx384m" mvn -B org.jacoco:jacoco-maven-plugin:${{ env.JACOCO_VERSION }}:prepare-agent install org.jacoco:jacoco-maven-plugin:${{ env.JACOCO_VERSION }}:report
-          mv src/server/target/site/jacoco src/server/target/site/jacoco_ut    
-          mvn -B org.jacoco:jacoco-maven-plugin:${{ env.JACOCO_VERSION }}:prepare-agent surefire:test org.jacoco:jacoco-maven-plugin:${{ env.JACOCO_VERSION }}:report -Dtest=ReaperShiroIT
+          mv src/server/target/site/jacoco src/server/target/site/jacoco_ut
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   docker-tests:
     name: Docker Image Tests
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         storage-type: [cassandra]
         test-type: [docker]
+        dockerfile: [Dockerfile, Dockerfile-spreaper, Dockerfile-ubi]
     steps:
+      - name: Raise open files limit
+        run: |
+          echo fs.file-max=1000000 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+          echo fs.inotify.max_user_instances=1280 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+          echo fs.inotify.max_user_watches=655360 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+          ulimit -a
+
+      - name: Free diskspace by removing unused packages
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -65,6 +79,7 @@ jobs:
         run: ./.github/scripts/run-tests.sh
         env:
           TEST_TYPE: ${{ matrix.test-type }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
 
       - name: Setup tmate session
         if: "failure()"
@@ -74,24 +89,21 @@ jobs:
   its-ccm-local:
     name: Memory backends
     needs: build
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: [ 'binary:3.0.25', 'binary:3.11.16', 'binary:4.0.6' ]
+        cassandra-version: [ 'binary:4.0.17', 'binary:4.1.8', 'binary:5.0.3' ]
         storage-type: [local]
         test-type: [ccm]
         include:
-          # don't run against the following C* versions when using cassandra storage type
-          - cassandra-version: 'binary:3.0.25'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards --tags ~@cassandra_3_11_onwards'
+          - cassandra-version: 'binary:4.0.17'
             experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:3.11.16'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards'
+            jdk-version: '11'
+          - cassandra-version: 'binary:4.1.8'
             experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:4.0.6'
+            jdk-version: '11'
+          - cassandra-version: 'binary:5.0.3'
             experimental: false
             jdk-version: '11'
           #- cassandra-version: 'github:apache/trunk'
@@ -99,7 +111,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -127,8 +139,6 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
-
       - name: Setup tmate session
         if: "failure()"
         uses: mxschmitt/action-tmate@v3
@@ -137,23 +147,21 @@ jobs:
   its-ccm-cass:
     needs: build
     name: Cassandra backend
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: [ 'binary:3.0.25', 'binary:3.11.16', 'binary:4.0.6']
+        cassandra-version: [ 'binary:4.0.17', 'binary:4.1.8', 'binary:5.0.3' ]
         storage-type: [cassandra]
         test-type: [ccm]
         include:
-          - cassandra-version: 'binary:3.0.25'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards --tags ~@cassandra_3_11_onwards'
+          - cassandra-version: 'binary:4.0.17'
             experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:3.11.16'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards'
+            jdk-version: '11'
+          - cassandra-version: 'binary:4.1.8'
             experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:4.0.6'
+            jdk-version: '11'
+          - cassandra-version: 'binary:5.0.3'
             experimental: false
             jdk-version: '11'
           #- cassandra-version: 'github:apache/trunk'
@@ -161,7 +169,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -187,8 +195,6 @@ jobs:
           STORAGE_TYPE: ${{ matrix.storage-type }}
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
-
-      - uses: codecov/codecov-action@v1
 
       - name: Setup tmate session
         if: "failure()"
@@ -196,30 +202,30 @@ jobs:
         timeout-minutes: 30
 
   its-sidecar:
-    needs: [docker-tests, its-ccm-local, its-ccm-cass]
+    needs: [docker-tests] #, its-ccm-local, its-ccm-cass]
     name: Sidecar
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: ['binary:3.0.25', 'binary:3.11.16', 'binary:4.0.6']
+        cassandra-version: [ 'binary:4.0.17', 'binary:4.1.8', 'binary:5.0.3' ]
         storage-type: [cassandra]
         test-type: [sidecar]
         grim-max: [1]
         grim-min: [1]
         # all versions but trunk have the same cucumber options, but we can't declare that more effectively (yet)
         include:
-          - cassandra-version: 'binary:3.0.25'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards --tags @sidecar --tags ~@cassandra_3_11_onwards'
-            experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:3.11.16'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards --tags @sidecar'
-            experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:4.0.6'
+          - cassandra-version: 'binary:4.0.17'
             cucumber-options: '--tags @sidecar'
-            experimental: false
+            experimental: true
+            jdk-version: '11'
+          - cassandra-version: 'binary:4.1.8'
+            cucumber-options: '--tags @sidecar'
+            experimental: true
+            jdk-version: '11'
+          - cassandra-version: 'binary:5.0.3'
+            cucumber-options: '--tags @sidecar'
+            experimental: true
             jdk-version: '11'
           #- cassandra-version: 'github:apache/trunk'
           #  cucumber-options: '--tags @sidecar'
@@ -227,7 +233,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -256,37 +262,36 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
-
   its-http-management:
     needs: [ build ]
     name: HTTP Management
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: [ 'binary:4.0.6', 'binary:3.11.16' ]
+        cassandra-version: [ 'binary:4.0.17', 'binary:4.1.8', 'binary:5.0.3' ]
         storage-type: [ "ccm" ]
         test-type: [ "http-api" ]
         grim-max: [ 1 ]
         grim-min: [ 1 ]
         # all versions but trunk have the same cucumber options, but we can't declare that more effectively (yet)
         include:
-          - cassandra-version: 'binary:3.11.16'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards --tags @http_management'
-            experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:4.0.6'
+          - cassandra-version: 'binary:4.0.17'
             cucumber-options: '--tags @http_management'
             experimental: false
             jdk-version: '11'
-          - cassandra-version: 'binary:3.11.16'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards'
+          - cassandra-version: 'binary:4.1.8'
+            cucumber-options: '--tags @http_management'
             experimental: false
-            jdk-version: '8'
+            jdk-version: '11'
+          - cassandra-version: 'binary:5.0.3'
+            cucumber-options: '--tags @http_management'
+            experimental: false
+            jdk-version: '11'
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -314,38 +319,53 @@ jobs:
           GRIM_MIN: ${{ matrix.grim-min }}
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
-      
+
+      # Upload logs
+      - name: Prepare a unique name for logs
+        if: ${{ failure() }}
+        run: |
+          name=${{ matrix.test-type }}-${{ matrix.cassandra-version }}
+          # The option to enable + in sed regexps differs by OS so we avoid it
+          name=$(echo -n "$name" | sed -e 's/[ \t:\/\\"<>|*?]/-/g' -e 's/--*/-/g')
+          echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
+
+      - name: Archive logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reaper-logs-${{ env.ARTIFACT_NAME }}
+          path: /tmp/log
+
       # Add a tmate action to debug failures. 
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 30
 
-      - uses: codecov/codecov-action@v1
-
   its-each:
-    needs: [docker-tests, its-ccm-local, its-ccm-cass]
+    needs: [docker-tests] #, its-ccm-local, its-ccm-cass]
     name: Each DC Availability
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: ['binary:4.0.6']
+        cassandra-version: ['binary:5.0.3']
         storage-type: [cassandra]
         test-type: [each]
         grim-max: [1]
         grim-min: [1]
         # Reduced scope to shorten the integration test times
         include:
-          - cassandra-version: 'binary:4.0.6'
+          - cassandra-version: 'binary:5.0.3'
             cucumber-options: '--tags @sidecar'
             experimental: false
+            jdk-version: '11'
           #- cassandra-version: 'github:apache/trunk'
           #  cucumber-options: '--tags @sidecar'
           #  experimental: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -374,30 +394,26 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
-
   its-distributed:
-    needs: [docker-tests, its-ccm-local, its-ccm-cass]
+    needs: [docker-tests] #, its-ccm-local, its-ccm-cass]
     name: Distributed tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: ['binary:3.0.25', 'binary:3.11.16', 'binary:4.0.6']
+        cassandra-version: [ 'binary:4.0.17', 'binary:4.1.8', 'binary:5.0.3' ]
         storage-type: [cassandra]
         test-type: [ccm]
         grim-max: [2]
         grim-min: [2]
         include:
-          - cassandra-version: 'binary:3.0.25'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards --tags ~@cassandra_3_11_onwards'
+          - cassandra-version: 'binary:4.0.17'
             experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:3.11.16'
-            cucumber-options: '--tags ~@cassandra_4_0_onwards'
+            jdk-version: '11'
+          - cassandra-version: 'binary:4.1.8'
             experimental: false
-            jdk-version: '8'
-          - cassandra-version: 'binary:4.0.6'
+            jdk-version: '11'
+          - cassandra-version: 'binary:5.0.3'
             experimental: false
             jdk-version: '11'
           #- cassandra-version: 'github:apache/trunk'
@@ -405,7 +421,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -434,24 +450,21 @@ jobs:
           GRIM_MIN: ${{ matrix.grim-min }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
-
   its-flapping:
-    needs: [docker-tests, its-ccm-local, its-ccm-cass]
+    needs: [docker-tests] #, its-ccm-local, its-ccm-cass]
     name: Flapping reapers
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        cassandra-version: ['binary:4.0.6']
+        cassandra-version: ['binary:5.0.3']
         storage-type: [cassandra]
         test-type: [ccm]
         grim-max: [4]
         grim-min: [2]
-        cucumber-options: ['--tags ~@diag_event_subscriptions']
         include:
           # all versions but trunk need to exclude trunk tests
-          - cassandra-version: 'binary:4.0.6'
+          - cassandra-version: 'binary:5.0.3'
             experimental: true
             jdk-version: '11'
           #- cassandra-version: 'github:apache/trunk'
@@ -459,7 +472,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -489,16 +502,14 @@ jobs:
           GRIM_MIN: ${{ matrix.grim-min }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
-
   release:
     name: Release Reaper
     needs: [its-distributed, its-flapping, its-sidecar, its-each]
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/tag')
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -547,6 +558,34 @@ jobs:
             SHADED_JAR=${{ env.SHADED_JAR }}
           push: true
           tags: ${{ env.DOCKER_TAG1 }},${{ env.DOCKER_TAG2 }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Build ubi image and push
+        id: docker_build_ubi
+        uses: docker/build-push-action@v4
+        with:
+          provenance: false
+          sbom: false
+          file: src/server/src/main/docker/Dockerfile-ubi
+          context: .
+          build-args: |
+            SHADED_JAR=${{ env.SHADED_JAR }}
+          push: true
+          tags: ${{ env.DOCKER_TAG1 }}-ubi,${{ env.DOCKER_TAG2 }}-ubi
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+      - name: Build spreaper image and push
+        id: docker_build_spreaper
+        uses: docker/build-push-action@v4
+        with:
+          file: src/server/src/main/docker/Dockerfile-spreaper
+          context: .
+          build-args: |
+            SHADED_JAR=${{ env.SHADED_JAR }}
+          push: true
+          tags: ${{ env.DOCKER_TAG1 }}-spreaper,${{ env.DOCKER_TAG2 }}-spreaper
           platforms: linux/amd64,linux/arm64
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache

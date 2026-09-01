@@ -28,19 +28,17 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Single class to hold all application global interfacing objects, and app global options.
- */
+/** Single class to hold all application global interfacing objects, and app global options. */
 public final class AppContext {
 
   public static final String REAPER_INSTANCE_ADDRESS = Private.initialiseInstanceAddress();
 
-  public final UUID reaperInstanceId = UUIDs.timeBased();
+  public final UUID reaperInstanceId = Uuids.timeBased();
   public final AtomicBoolean isRunning = new AtomicBoolean(true);
   public final AtomicBoolean isDistributed = new AtomicBoolean(false);
   public IStorageDao storage;
@@ -56,7 +54,7 @@ public final class AppContext {
     return localNodeAddress;
   }
 
-  private static class Private {
+  private static final class Private {
     private static final Logger LOG = LoggerFactory.getLogger(AppContext.class);
     private static final String DEFAULT_INSTANCE_ADDRESS = "127.0.0.1";
 

@@ -39,15 +39,15 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+
 import com.google.common.collect.ImmutableSet;
 import org.assertj.core.api.Assertions;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.util.collections.Sets;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 
 public final class HeartTest {
 
@@ -62,13 +62,14 @@ public final class HeartTest {
     IClusterDao mockedClusterDao = Mockito.mock(IClusterDao.class);
     Mockito.when(storage.getClusterDao()).thenReturn(mockedClusterDao);
     context.storage = storage;
-    Cluster cluster = Cluster.builder()
-        .withName("test")
-        .withSeedHosts(Sets.newSet("127.0.0.1"))
-        .withJmxPort(7199)
-        .withPartitioner("Murmur3Partitioner")
-        .withState(State.ACTIVE)
-        .build();
+    Cluster cluster =
+        Cluster.builder()
+            .withName("test")
+            .withSeedHosts(Sets.newSet("127.0.0.1"))
+            .withJmxPort(7199)
+            .withPartitioner("Murmur3Partitioner")
+            .withState(State.ACTIVE)
+            .build();
     Mockito.when(context.storage.getClusterDao().getClusters()).thenReturn(Arrays.asList(cluster));
     try (Heart heart = Heart.create(context)) {
       heart.beat();
@@ -86,31 +87,40 @@ public final class HeartTest {
     IClusterDao mockedClusterDao = Mockito.mock(IClusterDao.class);
     Mockito.when(storage.getClusterDao()).thenReturn(mockedClusterDao);
     context.storage = storage;
-    Cluster cluster = Cluster.builder()
-        .withName("test")
-        .withSeedHosts(Sets.newSet("127.0.0.1"))
-        .withJmxPort(7199)
-        .withPartitioner("Murmur3Partitioner")
-        .withState(State.ACTIVE)
-        .build();
+    Cluster cluster =
+        Cluster.builder()
+            .withName("test")
+            .withSeedHosts(Sets.newSet("127.0.0.1"))
+            .withJmxPort(7199)
+            .withPartitioner("Murmur3Partitioner")
+            .withState(State.ACTIVE)
+            .build();
     Mockito.when(context.storage.getClusterDao().getClusters()).thenReturn(Arrays.asList(cluster));
     IRepairScheduleDao mockedRepairScheduleDao = Mockito.mock(IRepairScheduleDao.class);
     Mockito.when(context.storage.getRepairScheduleDao()).thenReturn(mockedRepairScheduleDao);
-    Mockito.when(
-        mockedRepairScheduleDao.getRepairSchedulesForCluster(any(), anyBoolean())).thenReturn(Collections.emptyList());
+    Mockito.when(mockedRepairScheduleDao.getRepairSchedulesForCluster(any(), anyBoolean()))
+        .thenReturn(Collections.emptyList());
 
     try (Heart heart = Heart.create(context)) {
       heart.beat();
-      Awaitility.await().until(() -> {
-        try {
-          Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
-          return true;
-        } catch (AssertionError ex) {
-          return false;
-        }
-      });
+      Awaitility.await()
+          .until(
+              () -> {
+                try {
+                  Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1))
+                      .saveHeartbeat();
+                  return true;
+                } catch (AssertionError ex) {
+                  return false;
+                }
+              });
       Assertions.assertThat(heart.isCurrentlyUpdatingNodeMetrics().get()).isFalse();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
 
     Mockito.verify(mockedClusterDao, Mockito.times(1)).getClusters();
@@ -122,18 +132,20 @@ public final class HeartTest {
 
     AppContext context = new AppContext();
     context.config = new ReaperApplicationConfiguration();
-    context.config.setDatacenterAvailability(ReaperApplicationConfiguration.DatacenterAvailability.ALL);
+    context.config.setDatacenterAvailability(
+        ReaperApplicationConfiguration.DatacenterAvailability.ALL);
     IStorageDao storage = Mockito.mock(CassandraStorageFacade.class);
     IClusterDao mockedClusterDao = Mockito.mock(IClusterDao.class);
     Mockito.when(storage.getClusterDao()).thenReturn(mockedClusterDao);
     context.storage = storage;
-    Cluster cluster = Cluster.builder()
-        .withName("test")
-        .withSeedHosts(Sets.newSet("127.0.0.1"))
-        .withJmxPort(7199)
-        .withPartitioner("Murmur3Partitioner")
-        .withState(State.ACTIVE)
-        .build();
+    Cluster cluster =
+        Cluster.builder()
+            .withName("test")
+            .withSeedHosts(Sets.newSet("127.0.0.1"))
+            .withJmxPort(7199)
+            .withPartitioner("Murmur3Partitioner")
+            .withState(State.ACTIVE)
+            .build();
     Mockito.when(context.storage.getClusterDao().getClusters()).thenReturn(Arrays.asList(cluster));
     IRepairScheduleDao mockedRepairScheduleDao = Mockito.mock(IRepairScheduleDao.class);
     Mockito.when(context.storage.getRepairScheduleDao()).thenReturn(mockedRepairScheduleDao);
@@ -142,30 +154,41 @@ public final class HeartTest {
 
     try (Heart heart = Heart.create(context)) {
       heart.beat();
-      Awaitility.await().until(() -> {
-        try {
-          Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
-          return true;
-        } catch (AssertionError ex) {
-          return false;
-        }
-      });
+      Awaitility.await()
+          .until(
+              () -> {
+                try {
+                  Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1))
+                      .saveHeartbeat();
+                  return true;
+                } catch (AssertionError ex) {
+                  return false;
+                }
+              });
       Assertions.assertThat(heart.isCurrentlyUpdatingNodeMetrics().get()).isFalse();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
     Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
     Mockito.verify(mockedClusterDao, Mockito.times(1)).getClusters();
   }
 
   @Test
-  public void testBeat_distributedStorage_eachDatacenterAvailability() throws InterruptedException, ReaperException {
+  public void testBeat_distributedStorage_eachDatacenterAvailability()
+      throws InterruptedException, ReaperException {
 
     AppContext context = new AppContext();
     context.config = new ReaperApplicationConfiguration();
-    context.config.setDatacenterAvailability(ReaperApplicationConfiguration.DatacenterAvailability.EACH);
+    context.config.setDatacenterAvailability(
+        ReaperApplicationConfiguration.DatacenterAvailability.EACH);
     context.storage = Mockito.mock(CassandraStorageFacade.class);
     Mockito.when(context.storage.getClusterDao()).thenReturn(Mockito.mock(IClusterDao.class));
-    context.managementConnectionFactory = new JmxManagementConnectionFactory(context, new NoopCrypotograph());
+    context.managementConnectionFactory =
+        new JmxManagementConnectionFactory(context, new NoopCrypotograph());
     IRepairScheduleDao mockedRepairScheduleDao = Mockito.mock(IRepairScheduleDao.class);
     Mockito.when(context.storage.getRepairScheduleDao()).thenReturn(mockedRepairScheduleDao);
     Mockito.when(mockedRepairScheduleDao.getRepairSchedulesForCluster(any(), anyBoolean()))
@@ -174,7 +197,12 @@ public final class HeartTest {
     try (Heart heart = Heart.create(context)) {
       context.isDistributed.set(true);
       heart.beat();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
     Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
   }
@@ -185,27 +213,35 @@ public final class HeartTest {
 
     AppContext context = new AppContext();
     context.config = new ReaperApplicationConfiguration();
-    context.config.setDatacenterAvailability(ReaperApplicationConfiguration.DatacenterAvailability.EACH);
+    context.config.setDatacenterAvailability(
+        ReaperApplicationConfiguration.DatacenterAvailability.EACH);
     context.storage = new MemoryStorageFacade();
-    context.repairManager = RepairManager.create(
-        context,
-        Executors.newScheduledThreadPool(1),
-        RETRY_DELAY_S,
-        TimeUnit.SECONDS,
-        1,
-        context.storage.getRepairRunDao());
+    context.repairManager =
+        RepairManager.create(
+            context,
+            Executors.newScheduledThreadPool(1),
+            RETRY_DELAY_S,
+            TimeUnit.SECONDS,
+            1,
+            context.storage.getRepairRunDao());
 
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
 
     context.storage = Mockito.mock(CassandraStorageFacade.class);
     Mockito.when(context.storage.getClusterDao()).thenReturn(Mockito.mock(IClusterDao.class));
-    context.managementConnectionFactory = new JmxManagementConnectionFactory(context, new NoopCrypotograph());
+    context.managementConnectionFactory =
+        new JmxManagementConnectionFactory(context, new NoopCrypotograph());
 
     try (Heart heart = Heart.create(context)) {
       context.isDistributed.set(true);
       heart.beat();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
     Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
   }
@@ -216,15 +252,17 @@ public final class HeartTest {
 
     AppContext context = new AppContext();
     context.config = new ReaperApplicationConfiguration();
-    context.config.setDatacenterAvailability(ReaperApplicationConfiguration.DatacenterAvailability.EACH);
+    context.config.setDatacenterAvailability(
+        ReaperApplicationConfiguration.DatacenterAvailability.EACH);
     context.storage = new MemoryStorageFacade();
-    context.repairManager = RepairManager.create(
-        context,
-        Executors.newScheduledThreadPool(1),
-        RETRY_DELAY_S,
-        TimeUnit.SECONDS,
-        1,
-        context.storage.getRepairRunDao());
+    context.repairManager =
+        RepairManager.create(
+            context,
+            Executors.newScheduledThreadPool(1),
+            RETRY_DELAY_S,
+            TimeUnit.SECONDS,
+            1,
+            context.storage.getRepairRunDao());
 
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
@@ -235,12 +273,19 @@ public final class HeartTest {
     try (Heart heart = Heart.create(context)) {
       context.isDistributed.set(true);
       heart.beat();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
 
     Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
-    Mockito.verify(((JmxManagementConnectionFactory) context.managementConnectionFactory),
-            Mockito.times(0)).connectAny(any(Collection.class));
+    Mockito.verify(
+            ((JmxManagementConnectionFactory) context.managementConnectionFactory),
+            Mockito.times(0))
+        .connectAny(any(Collection.class));
   }
 
   @Test
@@ -249,16 +294,18 @@ public final class HeartTest {
 
     AppContext context = new AppContext();
     context.config = new ReaperApplicationConfiguration();
-    context.config.setDatacenterAvailability(ReaperApplicationConfiguration.DatacenterAvailability.EACH);
+    context.config.setDatacenterAvailability(
+        ReaperApplicationConfiguration.DatacenterAvailability.EACH);
     context.storage = Mockito.mock(CassandraStorageFacade.class);
 
-    context.repairManager = RepairManager.create(
-        context,
-        Executors.newScheduledThreadPool(1),
-        RETRY_DELAY_S,
-        TimeUnit.SECONDS,
-        1,
-        context.storage.getRepairRunDao());
+    context.repairManager =
+        RepairManager.create(
+            context,
+            Executors.newScheduledThreadPool(1),
+            RETRY_DELAY_S,
+            TimeUnit.SECONDS,
+            1,
+            context.storage.getRepairRunDao());
 
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
@@ -268,18 +315,25 @@ public final class HeartTest {
 
     JmxCassandraManagementProxy nodeProxy = Mockito.mock(JmxCassandraManagementProxy.class);
 
-    Mockito.when(context.managementConnectionFactory
-            .connectAny(any(Collection.class))).thenReturn(nodeProxy);
+    Mockito.when(context.managementConnectionFactory.connectAny(any(Collection.class)))
+        .thenReturn(nodeProxy);
 
     try (Heart heart = Heart.create(context)) {
       context.isDistributed.set(true);
       heart.beat();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
 
     Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();
-    Mockito.verify(((JmxManagementConnectionFactory) context.managementConnectionFactory),
-            Mockito.times(0)).connectAny(any(Collection.class));
+    Mockito.verify(
+            ((JmxManagementConnectionFactory) context.managementConnectionFactory),
+            Mockito.times(0))
+        .connectAny(any(Collection.class));
   }
 
   @Test
@@ -288,19 +342,21 @@ public final class HeartTest {
 
     AppContext context = new AppContext();
     context.config = new ReaperApplicationConfiguration();
-    context.config.setDatacenterAvailability(ReaperApplicationConfiguration.DatacenterAvailability.EACH);
+    context.config.setDatacenterAvailability(
+        ReaperApplicationConfiguration.DatacenterAvailability.EACH);
     IStorageDao storage = Mockito.mock(IStorageDao.class);
     IClusterDao mockedClusterDao = Mockito.mock(IClusterDao.class);
     Mockito.when(storage.getClusterDao()).thenReturn(mockedClusterDao);
     context.storage = storage;
 
-    context.repairManager = RepairManager.create(
-        context,
-        Executors.newScheduledThreadPool(1),
-        RETRY_DELAY_S,
-        TimeUnit.SECONDS,
-        1,
-        context.storage.getRepairRunDao());
+    context.repairManager =
+        RepairManager.create(
+            context,
+            Executors.newScheduledThreadPool(1),
+            RETRY_DELAY_S,
+            TimeUnit.SECONDS,
+            1,
+            context.storage.getRepairRunDao());
 
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
     context.repairManager.repairRunners.put(UUID.randomUUID(), Mockito.mock(RepairRunner.class));
@@ -318,13 +374,18 @@ public final class HeartTest {
 
     ICassandraManagementProxy nodeProxy = Mockito.mock(JmxCassandraManagementProxy.class);
 
-    Mockito.when(context.managementConnectionFactory
-            .connectAny(any(Collection.class))).thenReturn(nodeProxy);
+    Mockito.when(context.managementConnectionFactory.connectAny(any(Collection.class)))
+        .thenReturn(nodeProxy);
 
     try (Heart heart = Heart.create(context)) {
       context.isDistributed.set(true);
       heart.beat();
-      Thread.sleep(500);
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Test interrupted", e);
+      }
     }
 
     Mockito.verify((CassandraStorageFacade) context.storage, Mockito.times(1)).saveHeartbeat();

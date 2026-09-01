@@ -32,7 +32,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import com.datastax.driver.core.utils.UUIDs;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.repair.RepairParallelism;
@@ -40,12 +46,6 @@ import org.joda.time.DateTime;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.junit.Assert.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public final class PurgeServiceTest {
 
@@ -63,7 +63,8 @@ public final class PurgeServiceTest {
     // Create storage mock
     context.storage = mock(IStorageDao.class);
 
-    List<Cluster> clusters = Arrays.asList(Cluster.builder().withName(CLUSTER_NAME).withSeedHosts(SEEDS).build());
+    List<Cluster> clusters =
+        Arrays.asList(Cluster.builder().withName(CLUSTER_NAME).withSeedHosts(SEEDS).build());
     IClusterDao mockedClusterDao = mock(IClusterDao.class);
     when(context.storage.getClusterDao()).thenReturn(mockedClusterDao);
     when(context.storage.getClusterDao().getClusters()).thenReturn(clusters);
@@ -72,7 +73,7 @@ public final class PurgeServiceTest {
     List<RepairRun> repairRuns = Lists.newArrayList();
     DateTime currentDate = DateTime.now();
     for (int i = 0; i < 10; i++) {
-      UUID repairUnitId = UUIDs.timeBased();
+      UUID repairUnitId = Uuids.timeBased();
       DateTime startTime = currentDate.minusDays(i).minusHours(1);
 
       repairRuns.add(
@@ -84,7 +85,7 @@ public final class PurgeServiceTest {
               .tables(TABLES)
               .endTime(startTime.plusSeconds(1))
               .runState(RunState.DONE)
-              .build(UUIDs.timeBased()));
+              .build(Uuids.timeBased()));
     }
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
     when(context.storage.getRepairRunDao()).thenReturn(mockedRepairRunDao);
@@ -106,7 +107,8 @@ public final class PurgeServiceTest {
     // Create storage mock
     context.storage = mock(IStorageDao.class);
 
-    List<Cluster> clusters = Arrays.asList(Cluster.builder().withName(CLUSTER_NAME).withSeedHosts(SEEDS).build());
+    List<Cluster> clusters =
+        Arrays.asList(Cluster.builder().withName(CLUSTER_NAME).withSeedHosts(SEEDS).build());
     IClusterDao mockedClusterDao = mock(IClusterDao.class);
     when(context.storage.getClusterDao()).thenReturn(mockedClusterDao);
     when(context.storage.getClusterDao().getClusters()).thenReturn(clusters);
@@ -114,7 +116,7 @@ public final class PurgeServiceTest {
     // Add repair runs to the mock
     List<RepairRun> repairRuns = Lists.newArrayList();
     DateTime currentDate = DateTime.now();
-    UUID repairUnitId = UUIDs.timeBased();
+    UUID repairUnitId = Uuids.timeBased();
     for (int i = 0; i < 20; i++) {
       DateTime startTime = currentDate.minusDays(i).minusHours(1);
 
@@ -127,7 +129,7 @@ public final class PurgeServiceTest {
               .tables(TABLES)
               .endTime(startTime.plusSeconds(1))
               .runState(RunState.DONE)
-              .build(UUIDs.timeBased()));
+              .build(Uuids.timeBased()));
     }
 
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
@@ -150,7 +152,8 @@ public final class PurgeServiceTest {
     // Create storage mock
     context.storage = mock(IStorageDao.class);
 
-    List<Cluster> clusters = Arrays.asList(Cluster.builder().withName(CLUSTER_NAME).withSeedHosts(SEEDS).build());
+    List<Cluster> clusters =
+        Arrays.asList(Cluster.builder().withName(CLUSTER_NAME).withSeedHosts(SEEDS).build());
 
     IClusterDao mockedClusterDao = mock(IClusterDao.class);
     when(context.storage.getClusterDao()).thenReturn(mockedClusterDao);
@@ -160,7 +163,7 @@ public final class PurgeServiceTest {
     List<RepairRun> repairRuns = Lists.newArrayList();
     DateTime currentDate = DateTime.now();
     for (int i = 0; i < 10; i++) {
-      UUID repairUnitId = UUIDs.timeBased();
+      UUID repairUnitId = Uuids.timeBased();
       DateTime startTime = currentDate.minusDays(i).minusHours(1);
 
       repairRuns.add(
@@ -172,7 +175,7 @@ public final class PurgeServiceTest {
               .tables(TABLES)
               .pauseTime(startTime.plusSeconds(1))
               .runState(RunState.PAUSED)
-              .build(UUIDs.timeBased()));
+              .build(Uuids.timeBased()));
     }
 
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
@@ -185,5 +188,4 @@ public final class PurgeServiceTest {
     // Check that runs were removed
     assertEquals(0, purged);
   }
-
 }

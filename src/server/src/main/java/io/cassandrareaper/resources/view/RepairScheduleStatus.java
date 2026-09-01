@@ -31,11 +31,9 @@ import org.joda.time.format.ISODateTimeFormat;
 
 public final class RepairScheduleStatus {
 
-  @JsonProperty
-  private UUID id;
+  @JsonProperty private UUID id;
 
-  @JsonProperty
-  private String owner;
+  @JsonProperty private String owner;
 
   @JsonProperty("cluster_name")
   private String clusterName;
@@ -46,23 +44,21 @@ public final class RepairScheduleStatus {
   @JsonProperty("column_families")
   private Collection<String> columnFamilies;
 
-  @JsonProperty
-  private RepairSchedule.State state;
+  @JsonProperty private RepairSchedule.State state;
 
-  @JsonIgnore
-  private DateTime creationTime;
+  @JsonIgnore private DateTime creationTime;
 
-  @JsonIgnore
-  private DateTime nextActivation;
+  @JsonIgnore private DateTime nextActivation;
 
-  @JsonIgnore
-  private DateTime pauseTime;
+  @JsonIgnore private DateTime pauseTime;
 
-  @JsonProperty
-  private double intensity;
+  @JsonProperty private double intensity;
 
   @JsonProperty("incremental_repair")
   private boolean incrementalRepair;
+
+  @JsonProperty("subrange_incremental_repair")
+  private boolean subrangeIncrementalRepair;
 
   @JsonProperty("repair_parallelism")
   private RepairParallelism repairParallelism;
@@ -97,11 +93,8 @@ public final class RepairScheduleStatus {
   @JsonProperty("percent_unrepaired_threshold")
   private int percentUnrepairedThreshold;
 
-  /**
-   * Default public constructor Required for Jackson JSON parsing.
-   */
-  public RepairScheduleStatus() {
-  }
+  /** Default public constructor Required for Jackson JSON parsing. */
+  public RepairScheduleStatus() {}
 
   public RepairScheduleStatus(
       UUID id,
@@ -115,6 +108,7 @@ public final class RepairScheduleStatus {
       DateTime pauseTime,
       double intensity,
       boolean incrementalRepair,
+      boolean subrangeIncrementalRepair,
       RepairParallelism repairParallelism,
       int daysBetween,
       Collection<String> nodes,
@@ -138,6 +132,7 @@ public final class RepairScheduleStatus {
     this.pauseTime = pauseTime;
     this.intensity = RepairRunStatus.roundDoubleNicely(intensity);
     this.incrementalRepair = incrementalRepair;
+    this.subrangeIncrementalRepair = subrangeIncrementalRepair;
     this.repairParallelism = repairParallelism;
     this.daysBetween = daysBetween;
     this.nodes = nodes;
@@ -164,6 +159,7 @@ public final class RepairScheduleStatus {
         repairSchedule.getPauseTime(),
         repairSchedule.getIntensity(),
         repairUnit.getIncrementalRepair(),
+        repairUnit.getSubrangeIncrementalRepair(),
         repairSchedule.getRepairParallelism(),
         repairSchedule.getDaysBetween(),
         repairUnit.getNodes(),
@@ -174,7 +170,9 @@ public final class RepairScheduleStatus {
         repairUnit.getId(),
         repairUnit.getTimeout(),
         repairSchedule.getAdaptive(),
-        repairSchedule.getPercentUnrepairedThreshold() == null ? -1 : repairSchedule.getPercentUnrepairedThreshold());
+        repairSchedule.getPercentUnrepairedThreshold() == null
+            ? -1
+            : repairSchedule.getPercentUnrepairedThreshold());
   }
 
   public UUID getId() {
@@ -263,6 +261,14 @@ public final class RepairScheduleStatus {
 
   public void setIncrementalRepair(boolean incrementalRepair) {
     this.incrementalRepair = incrementalRepair;
+  }
+
+  public boolean getSubrangeIncrementalRepair() {
+    return subrangeIncrementalRepair;
+  }
+
+  public void setSubrangeIncrementalRepair(boolean subrangeIncrementalRepair) {
+    this.subrangeIncrementalRepair = subrangeIncrementalRepair;
   }
 
   public RepairParallelism getRepairParallelism() {

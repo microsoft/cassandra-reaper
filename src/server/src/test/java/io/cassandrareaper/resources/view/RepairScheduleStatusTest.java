@@ -20,7 +20,9 @@ package io.cassandrareaper.resources.view;
 import io.cassandrareaper.SimpleReaperClient;
 import io.cassandrareaper.core.RepairSchedule;
 
-import com.datastax.driver.core.utils.UUIDs;
+import static org.junit.Assert.assertEquals;
+
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import org.apache.cassandra.repair.RepairParallelism;
@@ -28,8 +30,6 @@ import org.joda.time.DateTime;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.junit.Assert.assertEquals;
 
 public final class RepairScheduleStatusTest {
 
@@ -42,9 +42,10 @@ public final class RepairScheduleStatusTest {
     data.setColumnFamilies(Lists.<String>newArrayList());
     data.setCreationTime(DateTime.now().withMillis(0));
     data.setDaysBetween(2);
-    data.setId(UUIDs.timeBased());
+    data.setId(Uuids.timeBased());
     data.setIntensity(0.75);
     data.setIncrementalRepair(false);
+    data.setSubrangeIncrementalRepair(false);
     data.setKeyspaceName("testKeyspace");
     data.setOwner("testuser");
     data.setRepairParallelism(RepairParallelism.PARALLEL);
@@ -63,9 +64,9 @@ public final class RepairScheduleStatusTest {
     assertEquals(data.getId(), dataAfter.getId());
     assertEquals(data.getIntensity(), dataAfter.getIntensity(), 0.0);
     assertEquals(data.getIncrementalRepair(), dataAfter.getIncrementalRepair());
+    assertEquals(data.getSubrangeIncrementalRepair(), dataAfter.getSubrangeIncrementalRepair());
     assertEquals(data.getKeyspaceName(), dataAfter.getKeyspaceName());
     assertEquals(data.getRepairParallelism(), dataAfter.getRepairParallelism());
     assertEquals(data.getState(), dataAfter.getState());
   }
-
 }

@@ -20,7 +20,7 @@
 
     <groupId>io.cassandrareaper</groupId>
     <artifactId>cassandra-reaper-pom</artifactId>
-    <version>3.4.0-SNAPSHOT</version>
+    <version>5.1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Reaper for Apache Cassandra project</name>
@@ -200,8 +200,14 @@
                 <exclude>**/*.access</exclude>
                 <exclude>**/*.password</exclude>
                 <exclude>**/*.txt</exclude>
+                <exclude>**/*.crt</exclude>
+                <exclude>**/*.key</exclude>
+                <exclude>**/*.pem</exclude>
                 <exclude>src/packaging/**</exclude>
                 <exclude>codecov.yml</exclude>
+                <exclude>.github/files/*.yaml</exclude>
+                <exclude>.gitmodules</exclude>
+                <exclude>src/docs/.hugo_build.lock</exclude>
               </excludes>
             </configuration>
             <executions>
@@ -211,6 +217,18 @@
                         <goal>check</goal>
                     </goals>
                 </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>com.diffplug.spotless</groupId>
+            <artifactId>spotless-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>check</goal>
+                </goals>
+                <phase>compile</phase>
+              </execution>
             </executions>
           </plugin>
         </plugins>
@@ -251,7 +269,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
-                <version>1.4.1</version>
+                <version>3.4.1</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -300,18 +318,6 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>3.1.2</version>
-                <dependencies>
-                  <dependency>
-                    <groupId>com.puppycrawl.tools</groupId>
-                    <artifactId>checkstyle</artifactId>
-                    <version>8.19</version>
-                  </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
                 <version>3.1.0</version>
             </plugin>
@@ -335,14 +341,37 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.1.1</version>
             </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.19.1</version>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                        <importOrder>
+                            <order>io.cassandrareaper,\,java,javax,\#</order>
+                        </importOrder>
+                        <removeUnusedImports />
+                        <trimTrailingWhitespace />
+                        <endWithNewline />
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                    </java>
+                </configuration>
+            </plugin>
           </plugins>
         </pluginManagement>
     </build>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <release.jdk>8</release.jdk>
-        <build.jdk.minimum>1.8</build.jdk.minimum>
+        <release.jdk>17</release.jdk>
+        <build.jdk.minimum>17</build.jdk.minimum>
         <!-- travis of July 2018 was still using maven-3.5.2 but our Docker image for building packages ships with 3.3.8 -->
         <maven.version.minimum>3.6.3</maven.version.minimum>
         <surefireArgLine></surefireArgLine>
@@ -350,7 +379,6 @@
         <!--
         Properties that influence various parts of the NetBeans IDE, especially code formatting and the like.
         -->
-        <netbeans.checkstyle.format>true</netbeans.checkstyle.format>
         <org-netbeans-modules-editor-indent.CodeStyle.project.text-limit-width>120</org-netbeans-modules-editor-indent.CodeStyle.project.text-limit-width>
         <org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.continuationIndentSize>4</org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.continuationIndentSize>
         <org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.importGroupsOrder>io.cassandrareaper.;java.;javax.;*;static *</org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.importGroupsOrder>
@@ -367,5 +395,15 @@
         <org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.enable-indent>true</org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.enable-indent>
         <org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.text-line-wrap>none</org-netbeans-modules-editor-indent.text.x-java.CodeStyle.project.text-line-wrap>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.beust</groupId>
+                <artifactId>jcommander</artifactId>
+                <version>1.75</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

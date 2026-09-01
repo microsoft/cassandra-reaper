@@ -113,3 +113,6 @@ metrics:
 cryptograph:
   type: symmetric
   systemPropertySecret: REAPER_ENCRYPTION_KEY
+
+# Use empty path for in-memory SQLite (non-persistent for tests)
+persistenceStoragePath: ""

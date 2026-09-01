@@ -17,8 +17,8 @@
 
 package io.cassandrareaper.storage.cassandra.migrations;
 
-import com.datastax.driver.core.Session;
-import com.datastax.driver.core.VersionNumber;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,31 +26,35 @@ public final class Migration016 {
 
   private static final Logger LOG = LoggerFactory.getLogger(Migration016.class);
 
-  private Migration016() {
-  }
+  private Migration016() {}
 
   /**
-   * if Cassandra is running version less than 4.0
-   * alter every table to set `dclocal_read_repair_chance` to zero
+   * if Cassandra is running version less than 4.0 alter every table to set
+   * `dclocal_read_repair_chance` to zero
    */
-  public static void migrate(Session session, String keyspace) {
+  public static void migrate(CqlSession session, String keyspace) {
 
-    VersionNumber highestNodeVersion = session.getCluster().getMetadata().getAllHosts()
-        .stream()
-        .map(host -> host.getCassandraVersion())
-        .max(VersionNumber::compareTo)
-        .get();
+    Version highestNodeVersion =
+        session.getMetadata().getNodes().entrySet().stream()
+            .map(host -> host.getValue().getCassandraVersion())
+            .max(Version::compareTo)
+            .get();
 
-    if (0 < VersionNumber.parse("4.0").compareTo(highestNodeVersion)) {
+    if (0 < Version.parse("4.0").compareTo(highestNodeVersion)) {
       LOG.warn("altering every table to set `dclocal_read_repair_chance` to zero…");
-      session.getCluster().getMetadata().getKeyspace(keyspace).getTables()
-          .stream()
-          .filter(table -> !table.getName().equals("repair_schedule") && !table.getName().equals("repair_unit"))
-          .forEach(tbl -> session.executeAsync(
-              "ALTER TABLE " + tbl.getName() + " WITH dclocal_read_repair_chance = 0"));
+      session.getMetadata().getKeyspace(keyspace).get().getTables().entrySet().stream()
+          .filter(
+              table ->
+                  !table.getValue().getName().equals("repair_schedule")
+                      && !table.getValue().getName().equals("repair_unit"))
+          .forEach(
+              tbl ->
+                  session.executeAsync(
+                      "ALTER TABLE "
+                          + tbl.getValue().getName()
+                          + " WITH dclocal_read_repair_chance = 0"));
 
       LOG.warn("alter every table to set `dclocal_read_repair_chance` to zero completed.");
     }
-
   }
 }

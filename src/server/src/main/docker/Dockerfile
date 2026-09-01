@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM amazoncorretto:11.0.20-alpine
+FROM amazoncorretto:17-alpine
 
 ARG SHADED_JAR
 
@@ -27,6 +27,7 @@ ENV REAPER_SEGMENT_COUNT_PER_NODE=64 \
     REAPER_STORAGE_TYPE=memory \
     REAPER_ENABLE_CROSS_ORIGIN=true \
     REAPER_INCREMENTAL_REPAIR=false \
+    REAPER_SUBRANGE_INCREMENTAL=false \
     REAPER_BLACKLIST_TWCS=false \
     REAPER_ENABLE_DYNAMIC_SEED_LIST=true \
     REAPER_REPAIR_MANAGER_SCHEDULING_INTERVAL_SECONDS=30 \
@@ -57,14 +58,16 @@ ENV REAPER_SEGMENT_COUNT_PER_NODE=64 \
     REAPER_SERVER_ADMIN_BIND_HOST="0.0.0.0" \
     REAPER_CASS_ACTIVATE_QUERY_LOGGER=false \
     REAPER_CASS_CLUSTER_NAME="clustername" \
-    REAPER_CASS_CONTACT_POINTS="[]" \
-    REAPER_CASS_PORT=9042 \
+    REAPER_CASS_CONTACT_POINTS="" \
     REAPER_CASS_KEYSPACE="reaper_db" \
     REAPER_CASS_LOCAL_DC="" \
     REAPER_CASS_AUTH_ENABLED="false" \
     REAPER_CASS_AUTH_USERNAME="cassandra" \
     REAPER_CASS_AUTH_PASSWORD="cassandra" \
     REAPER_CASS_NATIVE_PROTOCOL_SSL_ENCRYPTION_ENABLED="false" \
+    REAPER_CASS_SCHEMA_AGREEMENT_INTERVAL="2000" \
+    REAPER_CASS_SCHEMA_AGREEMENT_TIMEOUT="10" \
+    REAPER_CASS_REQUEST_TIMEOUT="10s" \
     REAPER_DB_URL="" \
     REAPER_DB_USERNAME="" \
     REAPER_DB_PASSWORD="" \
@@ -74,68 +77,68 @@ ENV REAPER_SEGMENT_COUNT_PER_NODE=64 \
     REAPER_AUTH_ENABLED="true" \
     REAPER_AUTH_USER="" \
     REAPER_AUTH_PASSWORD="" \
-    REAPER_SHIRO_INI="" \
-    REAPER_JMXMP_ENABLED="false" \
-    REAPER_JMXMP_SSL="false" \
+    REAPER_READ_USER="" \
+    REAPER_READ_USER_PASSWORD="" \
     JAVA_OPTS="" \
     REAPER_MAX_PARALLEL_REPAIRS=2 \
     REAPER_MGMT_API_METRICS_PORT=9000 \
-    REAPER_HTTP_MANAGEMENT_ENABLE="false"
+    REAPER_HTTP_MANAGEMENT_ENABLE="false" \
+    REAPER_HTTP_MANAGEMENT_KEYSTORE_PATH="" \
+    REAPER_HTTP_MANAGEMENT_TRUSTSTORE_PATH="" \
+    REAPER_HTTP_MANAGEMENT_TRUSTSTORES_DIR="" \
+    REAPER_MGMT_API_METRICS_TLS="false" \
+    REAPER_TMP_DIRECTORY="/var/tmp/cassandra-reaper" \
+    REAPER_MEMORY_STORAGE_DIRECTORY="/var/lib/cassandra-reaper/storage" \
+    REAPER_PURGE_RECORDS_AFTER_IN_DAYS=30
 
-# used to run spreaper cli
+
 RUN apk add --update \
-    python3 \
-    py3-pip \
-    bash \
-  && pip3 install requests \
+    bash curl \
+  && apk upgrade --no-cache openssl \
   && rm -rf /var/cache/apk/*
 
-
 ADD src/server/src/main/docker/cassandra-reaper.yml /etc/cassandra-reaper/cassandra-reaper.yml
-ADD src/server/src/main/docker/shiro.ini /etc/cassandra-reaper/shiro.ini
 ADD src/server/src/main/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 ADD src/server/src/main/docker/configure-persistence.sh /usr/local/bin/configure-persistence.sh
 ADD src/server/src/main/docker/configure-metrics.sh /usr/local/bin/configure-metrics.sh
-ADD src/server/src/main/docker/configure-webui-authentication.sh /usr/local/bin/configure-webui-authentication.sh
 ADD src/server/src/main/docker/configure-jmx-credentials.sh /usr/local/bin/configure-jmx-credentials.sh
+ADD src/server/src/main/docker/configure-authentication.sh /usr/local/bin/configure-authentication.sh
+ADD src/server/src/main/docker/configure-server.sh /usr/local/bin/configure-server.sh
 ADD ${SHADED_JAR} /usr/local/lib/cassandra-reaper.jar
-ADD src/packaging/bin/spreaper /usr/local/bin/spreaper
-
-
-# get around `/usr/local/bin/configure-persistence.sh: line 65: can't create /etc/cassandra-reaper/cassandra-reaper.yml: Interrupted system call` unknown error
-RUN touch /etc/cassandra-reaper/cassandra-reaper.yml
-# get around `/usr/local/bin/configure-webui-authentication.sh: line 44: can't `create` /etc/cassandra-reaper/shiro.ini: Interrupted system call` unknown error
-RUN touch /etc/cassandra-reaper/shiro.ini
 
 
 RUN addgroup -g 1001 -S reaper && adduser -G reaper -S -u 1001 reaper && \
     mkdir -p /var/lib/cassandra-reaper && \
     mkdir -p /etc/cassandra-reaper/shiro && \
+    mkdir -p /etc/cassandra-reaper/config && \
     mkdir -p /var/log/cassandra-reaper && \
+    mkdir -p ${REAPER_TMP_DIRECTORY} && \
     chown reaper:reaper \
         /etc/cassandra-reaper/cassandra-reaper.yml \
         /usr/local/lib/cassandra-reaper.jar \
         /usr/local/bin/entrypoint.sh \
         /usr/local/bin/configure-persistence.sh \
-        /usr/local/bin/configure-webui-authentication.sh \
         /usr/local/bin/configure-metrics.sh \
         /usr/local/bin/configure-jmx-credentials.sh \
-        /usr/local/bin/spreaper \
-        /etc/cassandra-reaper/shiro.ini && \
+        /usr/local/bin/configure-authentication.sh \
+        /usr/local/bin/configure-server.sh \
+        ${REAPER_TMP_DIRECTORY} && \
     chown -R reaper:reaper \
         /var/lib/cassandra-reaper \
         /etc/cassandra-reaper/shiro \
+        /etc/cassandra-reaper/config \
         /var/log/cassandra-reaper && \
     chmod +x \
         /usr/local/bin/entrypoint.sh \
         /usr/local/bin/configure-persistence.sh \
-        /usr/local/bin/configure-webui-authentication.sh \
         /usr/local/bin/configure-metrics.sh \
         /usr/local/bin/configure-jmx-credentials.sh \
-        /usr/local/bin/spreaper
+        /usr/local/bin/configure-authentication.sh \
+        /usr/local/bin/configure-server.sh
 
 VOLUME /var/lib/cassandra-reaper
 VOLUME /etc/cassandra-reaper/shiro
+VOLUME /etc/cassandra-reaper/config
 
 USER reaper
 

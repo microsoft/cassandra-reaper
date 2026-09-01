@@ -16,20 +16,20 @@
 
 # Add specific jmxAddressTranslator
 if [ ! -z "${JMX_ADDRESS_TRANSLATOR_TYPE}" ]; then
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
 jmxAddressTranslator:
   type: ${JMX_ADDRESS_TRANSLATOR_TYPE}
 EOT
 fi
 
 if [ "multiIpPerNode" = "${JMX_ADDRESS_TRANSLATOR_TYPE}" ] && [ -n "$JMX_ADDRESS_TRANSLATOR_MAPPING" ]; then
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
   ipTranslations:
 EOT
 IFS=',' read -ra mappings <<< "$JMX_ADDRESS_TRANSLATOR_MAPPING"
 for mapping in "${mappings[@]}"; do
 IFS=':' read -ra mapping <<< "$mapping"
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
     - from: "${mapping[0]}"
       to: "${mapping[1]}"
 EOT
@@ -40,55 +40,60 @@ case ${REAPER_STORAGE_TYPE} in
     "cassandra")
 
 # BEGIN cassandra persistence options
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
 activateQueryLogger: ${REAPER_CASS_ACTIVATE_QUERY_LOGGER}
 
 cassandra:
-  clusterName: ${REAPER_CASS_CLUSTER_NAME}
+  type: basic
+  sessionName: ${REAPER_CASS_CLUSTER_NAME}
   contactPoints: ${REAPER_CASS_CONTACT_POINTS}
-  port: ${REAPER_CASS_PORT}
-  keyspace: ${REAPER_CASS_KEYSPACE}
+  sessionKeyspaceName: ${REAPER_CASS_KEYSPACE}
   loadBalancingPolicy:
-    type: tokenAware
-    shuffleReplicas: true
-    subPolicy:
-      type: dcAwareRoundRobin
-      localDC: ${REAPER_CASS_LOCAL_DC}
-      usedHostsPerRemoteDC: 0
-      allowRemoteDCsForLocalConsistencyLevel: false
+    type: default
+    localDataCenter: ${REAPER_CASS_LOCAL_DC}
+  retryPolicy:
+    type: default
+  schemaOptions:
+    agreementIntervalMilliseconds: ${REAPER_CASS_SCHEMA_AGREEMENT_INTERVAL}
+    agreementTimeoutSeconds: ${REAPER_CASS_SCHEMA_AGREEMENT_TIMEOUT}
+    agreementWarnOnFailure: true
+  requestOptionsFactory:
+    requestTimeout: ${REAPER_CASS_REQUEST_TIMEOUT}
+    requestDefaultIdempotence: true
+
 EOT
 
 if [ "true" = "${REAPER_CASS_AUTH_ENABLED}" ]; then
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
   authProvider:
-    type: plainText
+    type: plain-text
     username: "$(echo "${REAPER_CASS_AUTH_USERNAME}" | sed 's/"/\\"/g')"
     password: "$(echo "${REAPER_CASS_AUTH_PASSWORD}" | sed 's/"/\\"/g')"
 EOT
 fi
 
 if [ "true" = "${REAPER_CASS_NATIVE_PROTOCOL_SSL_ENCRYPTION_ENABLED}" ]; then
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
   ssl:
     type: jdk
 EOT
 fi
 
 if [ "true" = "${REAPER_CASS_ADDRESS_TRANSLATOR_ENABLED}" ]; then
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
   addressTranslator:
     type: ${REAPER_CASS_ADDRESS_TRANSLATOR_TYPE}
 EOT
 fi
 
 if [ "multiIpPerNode" = "${REAPER_CASS_ADDRESS_TRANSLATOR_TYPE}" ] && [ -n "$REAPER_CASS_ADDRESS_TRANSLATOR_MAPPING" ]; then
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
     ipTranslations:
 EOT
 IFS=',' read -ra mappings <<< "$REAPER_CASS_ADDRESS_TRANSLATOR_MAPPING"
 for mapping in "${mappings[@]}"; do
 IFS=':' read -ra mapping <<< "$mapping"
-cat <<EOT >> /etc/cassandra-reaper/cassandra-reaper.yml
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
     - from: "${mapping[0]}"
       to: "${mapping[1]}"
 EOT
@@ -97,5 +102,12 @@ fi
 
 # END cassandra persistence options
 
+    ;;
+    "memory")
+# BEGIN cassandra persistence options
+cat <<EOT >> /etc/cassandra-reaper/config/cassandra-reaper.yml
+persistenceStoragePath: ${REAPER_MEMORY_STORAGE_DIRECTORY}
+
+EOT
     ;;
 esac

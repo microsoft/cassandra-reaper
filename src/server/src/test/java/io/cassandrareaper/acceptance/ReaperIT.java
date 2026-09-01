@@ -17,8 +17,8 @@
 
 package io.cassandrareaper.acceptance;
 
-import cucumber.api.CucumberOptions;
-import cucumber.api.junit.Cucumber;
+import io.cucumber.junit.Cucumber;
+import io.cucumber.junit.CucumberOptions;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -27,12 +27,8 @@ import org.slf4j.LoggerFactory;
 
 @RunWith(Cucumber.class)
 @CucumberOptions(
-    features = {
-      "classpath:io.cassandrareaper.acceptance/integration_reaper_functionality.feature",
-      "classpath:io.cassandrareaper.acceptance/event_subscriptions.feature"
-    },
-    plugin = {"pretty"}
-    )
+    features = {"classpath:io.cassandrareaper.acceptance/integration_reaper_functionality.feature"},
+    plugin = {"pretty"})
 public class ReaperIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReaperIT.class);
@@ -56,5 +52,4 @@ public class ReaperIT {
     LOG.info("Stopping reaper service...");
     runner.runnerInstance.after();
   }
-
 }

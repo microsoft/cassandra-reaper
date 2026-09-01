@@ -23,8 +23,7 @@ import io.cassandrareaper.storage.cassandra.CassandraStorageFacade;
 import java.util.UUID;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import io.dropwizard.setup.Environment;
+import io.dropwizard.core.setup.Environment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,34 +34,34 @@ public final class InitializeStorage {
   private final Environment environment;
   private final UUID reaperInstanceId;
 
-  private InitializeStorage(ReaperApplicationConfiguration config, Environment environment, UUID reaperInstanceId) {
+  private InitializeStorage(
+      ReaperApplicationConfiguration config, Environment environment, UUID reaperInstanceId) {
     this.config = config;
     this.environment = environment;
     this.reaperInstanceId = reaperInstanceId;
   }
 
-  public static InitializeStorage initializeStorage(ReaperApplicationConfiguration config, Environment environment) {
+  public static InitializeStorage initializeStorage(
+      ReaperApplicationConfiguration config, Environment environment) {
     return new InitializeStorage(config, environment, UUID.randomUUID());
   }
 
   public static InitializeStorage initializeStorage(
-      ReaperApplicationConfiguration config,
-      Environment environment,
-      UUID reaperInstanceId) {
+      ReaperApplicationConfiguration config, Environment environment, UUID reaperInstanceId) {
     return new InitializeStorage(config, environment, reaperInstanceId);
   }
 
-  public IStorageDao initializeStorageBackend()
-      throws ReaperException {
+  public IStorageDao initializeStorageBackend() throws ReaperException {
     IStorageDao storage;
     LOG.info("Initializing the database and performing schema migrations");
 
     if ("memory".equalsIgnoreCase(config.getStorageType())) {
-      storage = new MemoryStorageFacade();
-    } else if (Lists.newArrayList("cassandra", "astra").contains(config.getStorageType())) {
-      CassandraStorageFacade.CassandraMode mode = config.getStorageType().equals("cassandra")
-          ? CassandraStorageFacade.CassandraMode.CASSANDRA
-          : CassandraStorageFacade.CassandraMode.ASTRA;
+      Preconditions.checkArgument(
+          config.getPersistenceStoragePath() != null,
+          "persistenceStoragePath is required for memory storage type");
+      storage = new MemoryStorageFacade(config.getPersistenceStoragePath());
+    } else if ("cassandra".equalsIgnoreCase(config.getStorageType())) {
+      CassandraStorageFacade.CassandraMode mode = CassandraStorageFacade.CassandraMode.CASSANDRA;
       storage = new CassandraStorageFacade(reaperInstanceId, config, environment, mode);
     } else {
       LOG.error("invalid storageType: {}", config.getStorageType());

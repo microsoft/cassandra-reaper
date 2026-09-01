@@ -2,17 +2,15 @@
  * Copyright 2023-2023 DataStax, Inc.
  *
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package io.cassandrareaper.management.http;
@@ -20,6 +18,7 @@ package io.cassandrareaper.management.http;
 import io.cassandrareaper.ReaperException;
 import io.cassandrareaper.core.GenericMetric;
 import io.cassandrareaper.core.Node;
+import io.cassandrareaper.core.RepairType;
 import io.cassandrareaper.core.Snapshot;
 import io.cassandrareaper.core.Table;
 import io.cassandrareaper.management.ICassandraManagementProxy;
@@ -38,7 +37,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,9 +47,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
 import javax.management.JMException;
-import javax.management.openmbean.CompositeData;
-import javax.validation.constraints.NotNull;
 
 import com.codahale.metrics.MetricRegistry;
 import com.datastax.mgmtapi.client.api.DefaultApi;
@@ -68,7 +65,8 @@ import com.datastax.mgmtapi.client.model.TokenRangeToEndpointResponse;
 import com.datastax.mgmtapi.client.model.TokenRangeToEndpoints;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Maps;
-
+import jakarta.validation.constraints.NotNull;
+import okhttp3.OkHttpClient;
 import org.apache.cassandra.repair.RepairParallelism;
 import org.apache.cassandra.utils.progress.ProgressEventType;
 import org.slf4j.Logger;
@@ -86,22 +84,25 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   final int metricsPort;
   final Node node;
   final HttpMetricsProxy metricsProxy;
+  OkHttpClient.Builder metricsClientBuilder;
+  final boolean metricsTlsEnabled;
 
   final ConcurrentMap<Integer, RepairStatusHandler> repairStatusHandlers = Maps.newConcurrentMap();
   final ConcurrentMap<String, JobStatusTracker> jobTracker = Maps.newConcurrentMap();
   final ConcurrentMap<Integer, ExecutorService> repairStatusExecutors = Maps.newConcurrentMap();
 
-
   private ScheduledExecutorService statusTracker;
 
-  public HttpCassandraManagementProxy(MetricRegistry metricRegistry,
-                                      String rootPath,
-                                      InetSocketAddress endpoint,
-                                      ScheduledExecutorService executor,
-                                      DefaultApi apiClient,
-                                      int metricsPort,
-                                      Node node
-  ) {
+  public HttpCassandraManagementProxy(
+      MetricRegistry metricRegistry,
+      String rootPath,
+      InetSocketAddress endpoint,
+      ScheduledExecutorService executor,
+      DefaultApi apiClient,
+      int metricsPort,
+      Node node,
+      OkHttpClient.Builder metricsClientBuilder,
+      boolean metricsTlsEnabled) {
     this.host = endpoint.getHostString();
     this.metricRegistry = metricRegistry;
     this.rootPath = rootPath;
@@ -110,21 +111,23 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
     this.metricsPort = metricsPort;
     this.statusTracker = executor;
     this.node = node;
+    this.metricsClientBuilder = metricsClientBuilder;
+    this.metricsTlsEnabled = metricsTlsEnabled;
     this.metricsProxy = HttpMetricsProxy.create(this, node);
 
     // TODO Perhaps the poll interval should be configurable through context.config ?
     this.scheduleJobPoller(DEFAULT_POLL_INTERVAL_IN_MILLISECONDS);
   }
 
-  public HttpCassandraManagementProxy(MetricRegistry metricRegistry,
-                                      String rootPath,
-                                      InetSocketAddress endpoint,
-                                      ScheduledExecutorService executor,
-                                      DefaultApi apiClient,
-                                      int metricsPort,
-                                      Node node,
-                                      HttpMetricsProxy metricsProxy
-  ) {
+  public HttpCassandraManagementProxy(
+      MetricRegistry metricRegistry,
+      String rootPath,
+      InetSocketAddress endpoint,
+      ScheduledExecutorService executor,
+      DefaultApi apiClient,
+      int metricsPort,
+      Node node,
+      HttpMetricsProxy metricsProxy) {
     this.host = endpoint.getHostString();
     this.metricRegistry = metricRegistry;
     this.rootPath = rootPath;
@@ -134,6 +137,7 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
     this.statusTracker = executor;
     this.node = node;
     this.metricsProxy = metricsProxy;
+    this.metricsTlsEnabled = false; // Default to false for test constructor
 
     // TODO Perhaps the poll interval should be configurable through context.config ?
     this.scheduleJobPoller(DEFAULT_POLL_INTERVAL_IN_MILLISECONDS);
@@ -148,19 +152,30 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
     return metricsPort;
   }
 
+  public OkHttpClient.Builder getMetricsClientBuilder() {
+    return metricsClientBuilder;
+  }
+
+  public boolean isMetricsTlsEnabled() {
+    return metricsTlsEnabled;
+  }
+
   @Override
   public List<BigInteger> getTokens() {
     try {
       EndpointStates endpointStates = apiClient.getEndpointStates();
       List<BigInteger> tokenList = new ArrayList<>();
-      endpointStates.getEntity().forEach((Map<String, String> states) -> {
-        // Stargate nodes are part of the endpoint states but do not have tokens
-        if (!isCoordinatorNode(states)) {
-          for (String token : states.get("TOKENS").split(",")) {
-            tokenList.add(new BigInteger(token));
-          }
-        }
-      });
+      endpointStates
+          .getEntity()
+          .forEach(
+              (Map<String, String> states) -> {
+                // Stargate nodes are part of the endpoint states but do not have tokens
+                if (!isCoordinatorNode(states)) {
+                  for (String token : states.get("TOKENS").split(",")) {
+                    tokenList.add(new BigInteger(token));
+                  }
+                }
+              });
       // sort the list
       Collections.sort(tokenList);
       return tokenList;
@@ -171,19 +186,22 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   }
 
   @Override
-  public Map<List<String>, List<String>> getRangeToEndpointMap(String keyspace) throws ReaperException {
+  public Map<List<String>, List<String>> getRangeToEndpointMap(String keyspace)
+      throws ReaperException {
     try {
       TokenRangeToEndpointResponse resp = apiClient.getRangeToEndpointMapV2(keyspace);
       List<TokenRangeToEndpoints> list = resp.getTokenRangeToEndpoints();
       Map<List<String>, List<String>> map = new HashMap<>(list.size());
-      list.forEach((TokenRangeToEndpoints entry) -> {
-        List<Long> tokens = entry.getTokens();
-        List<String> range = new ArrayList<>(tokens.size());
-        tokens.forEach((Long token) -> {
-          range.add(token.toString());
-        });
-        map.put(range, entry.getEndpoints());
-      });
+      list.forEach(
+          (TokenRangeToEndpoints entry) -> {
+            List<Long> tokens = entry.getTokens();
+            List<String> range = new ArrayList<>(tokens.size());
+            tokens.forEach(
+                (Long token) -> {
+                  range.add(token.toString());
+                });
+            map.put(range, entry.getEndpoints());
+          });
       return map;
     } catch (ApiException e) {
       LOG.error("Failed to retrieve token range to endpoint mapping", e);
@@ -219,12 +237,7 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   public Map<String, String> getEndpointToHostId() {
     try {
       return apiClient.getEndpointStates().getEntity().stream()
-          .collect(
-              Collectors.toMap(
-                  i -> i.get("ENDPOINT_IP"),
-                  i -> i.get("HOST_ID")
-              )
-          );
+          .collect(Collectors.toMap(i -> i.get("ENDPOINT_IP"), i -> i.get("HOST_ID")));
     } catch (ApiException ae) {
       LOG.error("Failed to retrieve endpoint states - does the HTTP proxy have connectivity?", ae);
       return Collections.emptyMap();
@@ -284,11 +297,12 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   public Set<Table> getTablesForKeyspace(String keyspace) throws ReaperException {
     try {
       return apiClient.listTablesV1(keyspace).stream()
-          .map(t ->
-              Table.builder()
-                  .withName(t.getName())
-                  .withCompactionStrategy(t.getCompaction().get("class"))
-                  .build())
+          .map(
+              t ->
+                  Table.builder()
+                      .withName(t.getName())
+                      .withCompactionStrategy(t.getCompaction().get("class"))
+                      .build())
           .collect(Collectors.toSet());
     } catch (ApiException e) {
       throw new ReaperException("Error querying table data", e);
@@ -309,7 +323,8 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
 
   @Override
   public boolean isRepairRunning() throws JMException {
-    return true; // TODO: implement me. This is low priority because it is used only in tests now. It should be
+    return true; // TODO: implement me. This is low priority because it is used only in tests now.
+    // It should be
     // removed longer term.
   }
 
@@ -354,7 +369,7 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
       String keyspace,
       RepairParallelism repairParallelism,
       Collection<String> columnFamilies,
-      boolean fullRepair,
+      RepairType repairType,
       Collection<String> datacenters,
       RepairStatusHandler repairStatusHandler,
       List<RingRange> associatedTokens,
@@ -363,21 +378,23 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
 
     String jobId;
     try {
-      RepairRequestResponse resp = apiClient.putRepairV2(
-          (new RepairRequest())
-              .fullRepair(fullRepair)
-              .keyspace(keyspace)
-              .tables(new ArrayList<>(columnFamilies))
-              .repairParallelism(RepairRequest.RepairParallelismEnum.fromValue(repairParallelism.getName()))
-              .repairThreadCount(repairThreadCount)
-              .associatedTokens(
-                  associatedTokens.stream().map(i ->
-                      (new com.datastax.mgmtapi.client.model.RingRange())
-                          .start(i.getStart().longValue())
-                          .end(i.getEnd().longValue())
-                  ).collect(Collectors.toList())
-              )
-      );
+      RepairRequestResponse resp =
+          apiClient.putRepairV2(
+              (new RepairRequest())
+                  .fullRepair(repairType.isFull())
+                  .keyspace(keyspace)
+                  .tables(new ArrayList<>(columnFamilies))
+                  .repairParallelism(
+                      RepairRequest.RepairParallelismEnum.fromValue(repairParallelism.getName()))
+                  .repairThreadCount(repairThreadCount)
+                  .associatedTokens(
+                      associatedTokens.stream()
+                          .map(
+                              i ->
+                                  (new com.datastax.mgmtapi.client.model.RingRange())
+                                      .start(i.getStart().longValue())
+                                      .end(i.getEnd().longValue()))
+                          .collect(Collectors.toList())));
       jobId = resp.getRepairId();
     } catch (ApiException e) {
       throw new ReaperException(e);
@@ -393,13 +410,16 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
 
   @Override
   public void removeRepairStatusHandler(int repairNo) {
+    String jobId = String.format("repair-%d", repairNo);
+    // Remove the job from jobTracker first so new poller iterations do not pick it up.
+    // Entries already captured by an in-flight entrySet() iteration are handled safely
+    // by the null checks in dispatchNotification().
+    jobTracker.remove(jobId);
     repairStatusHandlers.remove(repairNo);
     ExecutorService repairStatusExecutor = repairStatusExecutors.remove(repairNo);
     if (null != repairStatusExecutor) {
       repairStatusExecutor.shutdown();
     }
-    String jobId = String.format("repair-%d", repairNo);
-    jobTracker.remove(jobId);
   }
 
   @Override
@@ -493,7 +513,8 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
 
   @Override
   public void takeColumnFamilySnapshot(String var1, String var2, String var3) throws IOException {
-    // TODO: implement me. This is low priority since it is not called anywhere. It should be removed longer term.
+    // TODO: implement me. This is low priority since it is not called anywhere. It should be
+    // removed longer term.
 
   }
 
@@ -519,8 +540,8 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   }
 
   @Override
-  public void forceKeyspaceCompaction(boolean splitOutput, String keyspaceName, String... columnFamilies) throws
-      IOException {
+  public void forceKeyspaceCompaction(
+      boolean splitOutput, String keyspaceName, String... columnFamilies) throws IOException {
     CompactRequest request = new CompactRequest();
     request.setSplitOutput(splitOutput);
     request.setKeyspaceName(keyspaceName);
@@ -539,7 +560,9 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   @Override
   public List<Map<String, String>> getCompactions() {
     try {
-      return apiClient.getCompactions().stream().map(Compactions::asMap).collect(Collectors.toList());
+      return apiClient.getCompactions().stream()
+          .map(Compactions::asMap)
+          .collect(Collectors.toList());
     } catch (ApiException ae) {
       LOG.error("Failed to get compactions", ae);
       return Collections.emptyList();
@@ -581,18 +604,11 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
     return null;
   }
 
-  // From StreamManagerMBean
-  @Override
-  public Set<CompositeData> getCurrentStreams() {
-    // TODO: implement me. This is low priority since it is used only for display of stuff in the UI for
-    //  informational purposes. It should be implemented eventually.
-    return new HashSet<CompositeData>();
-  }
-
   @Override
   public String getUntranslatedHost() throws ReaperException {
-    // TODO getLocalEndpoint returns the "internal" IP, figure out if we have to do any conversion here. If not, this
-    //  method can be inlined.
+    // TODO getLocalEndpoint returns the "internal" IP, figure out if we have to do any conversion
+    // here. If not, this
+    // method can be inlined.
     return getLocalEndpoint();
   }
 
@@ -608,42 +624,103 @@ public class HttpCassandraManagementProxy implements ICassandraManagementProxy {
   @VisibleForTesting
   private void scheduleJobPoller(int pollInterval) {
     statusTracker.scheduleWithFixedDelay(
-        notificationsTracker(),
-        pollInterval * 2,
-        pollInterval,
-        TimeUnit.MILLISECONDS);
+        notificationsTracker(), pollInterval * 2, pollInterval, TimeUnit.MILLISECONDS);
   }
 
   @VisibleForTesting
   Runnable notificationsTracker() {
     return () -> {
-      if (jobTracker.size() > 0) {
-        for (Map.Entry<String, JobStatusTracker> entry : jobTracker.entrySet()) {
-          Job job = getJobStatus(entry.getKey());
-          int availableNotifications = job.getStatusChanges().size();
-          int currentNotificationCount = entry.getValue().latestNotificationCount.get();
-
-          if (currentNotificationCount < availableNotifications) {
-            // We need to process the new ones
-            for (int i = currentNotificationCount; i < availableNotifications; i++) {
-              StatusChange statusChange = job.getStatusChanges().get(i);
-              // remove "repair-" prefix
-              int repairNo = Integer.parseInt(job.getId().substring(7));
-              ProgressEventType progressType = ProgressEventType.valueOf(statusChange.getStatus());
-              repairStatusExecutors.get(repairNo).submit(() -> {
-                repairStatusHandlers
-                    .get(repairNo)
-                    .handle(repairNo, Optional.empty(), Optional.of(progressType),
-                        statusChange.getMessage(), this);
-              });
-
-              // Update the count as we process them
-              entry.getValue().latestNotificationCount.incrementAndGet();
-            }
-          }
+      for (Map.Entry<String, JobStatusTracker> entry : jobTracker.entrySet()) {
+        try {
+          processJobEntry(entry);
+        } catch (RuntimeException e) {
+          LOG.warn(
+              "Failed to process jobTracker entry key={} in notificationsTracker,"
+                  + " will retry on next poll",
+              entry.getKey(),
+              e);
         }
       }
     };
+  }
+
+  private void processJobEntry(Map.Entry<String, JobStatusTracker> entry) {
+    final String jobId = entry.getKey();
+    Job job = getJobStatus(jobId);
+    if (job.getStatusChanges() == null) {
+      LOG.warn("Job {} returned null statusChanges in notificationsTracker, skipping", jobId);
+      return;
+    }
+    int availableNotifications = job.getStatusChanges().size();
+    int currentNotificationCount = entry.getValue().latestNotificationCount.get();
+    if (currentNotificationCount >= availableNotifications) {
+      return;
+    }
+    String rawId = job.getId();
+    if (rawId == null || !rawId.startsWith("repair-") || rawId.length() <= 7) {
+      LOG.warn("Job {} has malformed id '{}' in notificationsTracker, skipping", jobId, rawId);
+      return;
+    }
+    // remove "repair-" prefix once per job, not per notification
+    int repairNo = Integer.parseInt(rawId.substring(7));
+    for (int i = currentNotificationCount; i < availableNotifications; i++) {
+      dispatchNotification(repairNo, jobId, i, job.getStatusChanges().get(i));
+      entry.getValue().latestNotificationCount.incrementAndGet();
+    }
+  }
+
+  private void dispatchNotification(
+      int repairNo, String jobId, int index, StatusChange statusChange) {
+    ProgressEventType progressType;
+    try {
+      progressType = ProgressEventType.valueOf(statusChange.getStatus());
+    } catch (IllegalArgumentException e) {
+      LOG.warn(
+          "Unknown ProgressEventType '{}' for repairNo={} jobId={} index={}, skipping",
+          statusChange.getStatus(),
+          repairNo,
+          jobId,
+          index);
+      return;
+    }
+
+    ExecutorService executor = repairStatusExecutors.get(repairNo);
+    if (executor == null) {
+      // The repair was cleaned up concurrently; skip this event safely.
+      LOG.warn(
+          "Executor for repairNo={} is null while processing jobId={} notification index={},"
+              + " skipping",
+          repairNo,
+          jobId,
+          index);
+      return;
+    }
+
+    RepairStatusHandler handler = repairStatusHandlers.get(repairNo);
+    if (handler == null) {
+      LOG.warn(
+          "Handler for repairNo={} is null while processing jobId={} notification index={},"
+              + " skipping",
+          repairNo,
+          jobId,
+          index);
+      return;
+    }
+
+    try {
+      executor.submit(
+          () ->
+              handler.handle(repairNo, Optional.of(progressType), statusChange.getMessage(), this));
+    } catch (RuntimeException e) {
+      // Covers RejectedExecutionException if the executor was shut down
+      // concurrently between the null check above and this call.
+      LOG.warn(
+          "Failed to submit notification for repairNo={} jobId={} index={}",
+          repairNo,
+          jobId,
+          index,
+          e);
+    }
   }
 
   // Coordinator nodes such as Stargate instances do not have tokens

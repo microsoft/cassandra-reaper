@@ -1,11 +1,8 @@
-+++
-[menu.docs]
-name = "Reaper Specific Settings"
-parent = "configuration"
-weight = 4
-+++
-
-# Reaper Specific Settings
+---
+title: "Reaper Specific Settings"
+parent: "configuration"
+weight: 4
+---
 
 Configuration settings in the *cassandra-reaper.yaml* that are specific to Reaper
 
@@ -21,6 +18,9 @@ Optional setting to automatically setup repair schedules for all non-system keys
       periodBetweenPolls: PT10M
       timeBeforeFirstSchedule: PT5M
       scheduleSpreadPeriod: PT6H
+      adaptive: true
+      incremental: false
+      percentUnrepairedThreshold: 10
       excludedKeyspaces: [myTTLKeyspace, ...]
       excludedClusters: [myCluster, ...]
 
@@ -66,6 +66,30 @@ Default: *PT6H* (6 hours)
 
 The time spacing between each of the repair schedules that is to be carried out.
 
+#### `adaptive`
+
+Type: *Boolean*
+
+Default: *true*
+
+When enabled, the auto-scheduling will automatically adapt repair schedules based on the cluster's repair history and current state.
+
+#### `incremental`
+
+Type: *Boolean*
+
+Default: *false*
+
+When enabled, auto-scheduled repairs will use incremental repair by default. Note that this is only supported with the PARALLEL repairParallelism setting.
+
+#### `percentUnrepairedThreshold`
+
+Type: *Integer*
+
+Default: *10*
+
+The percentage threshold of unrepaired data that triggers auto-scheduling to create repair schedules. If a keyspace has more than this percentage of unrepaired data, it will be included in auto-scheduling.
+
 #### `excludedKeyspaces`
 
 Type: *Array* (comma separated *Strings*)
@@ -96,11 +120,11 @@ For security reasons, it is possible that Reaper will have access limited to nod
 
 **ALL** - requires Reaper to have access via JMX to all nodes across all datacenters. In this mode Reaper can be backed by all available storage types.
 
-**LOCAL** - requires Reaper to have access via JMX to all nodes only in the same datacenter local to Reaper. A single Reaper instance can operate in this mode and trigger repairs from within its local data center. In this case, can be backed by all available storage types and repairs to any remote datacenters are be handled internally by Cassandra. A Reaper instance can be deployed to each datacenter and be configured to operate in this mode. In this case, Reaper can use Apache Cassandra or Astra as its storage.
+**LOCAL** - requires Reaper to have access via JMX to all nodes only in the same datacenter local to Reaper. A single Reaper instance can operate in this mode and trigger repairs from within its local data center. In this case, can be backed by all available storage types and repairs to any remote datacenters are be handled internally by Cassandra. A Reaper instance can be deployed to each datacenter and be configured to operate in this mode. In this case, Reaper can use Apache Cassandra as its storage.
 
 Further information can be found in the [Operating with a Multi DC Cluster](../../usage/multi_dc) section.
 
-**EACH** - requires a minimum of one Reaper instance operating in each datacenter. Each Reaper instance is required to have access via JMX to all nodes only in its local datacenter. When operating in this mode, Reaper can use either of Apache Cassandra or Astra as its storage. In addition, metrics from nodes in remote datacenters must be collected through the storage backend. If any metric is unavailable, the segment will be postponed for later processing.
+**EACH** - requires a minimum of one Reaper instance operating in each datacenter. Each Reaper instance is required to have access via JMX to all nodes only in its local datacenter. When operating in this mode, Reaper can use either of Apache Cassandra as its storage. In addition, metrics from nodes in remote datacenters must be collected through the storage backend. If any metric is unavailable, the segment will be postponed for later processing.
 
 Further information can be found in the [Operating with a Multi DC Cluster](../../usage/multi_dc) section.
 
@@ -142,6 +166,54 @@ repair again within the same repair run process.
 
 <br/>
 
+### `httpManagement`
+
+Settings to configure HTTP management interface for integration with management APIs like DataStax OpsCenter or similar tools.
+
+    httpManagement:
+      enabled: false
+      mgmtApiMetricsPort: 9000
+      keystore: /path/to/keystore.jks
+      truststore: /path/to/truststore.jks
+      truststoresDir: /path/to/truststores
+      metricsTLSEnabled: true
+
+#### `enabled`
+
+Type: *Boolean*
+
+Default: *false*
+
+Enables or disables the HTTP management interface.
+
+#### `mgmtApiMetricsPort`
+
+Type: *Integer*
+
+Default: *9000*
+
+The port number for the management API metrics endpoint.
+
+#### `keystore`
+
+Type: *String*
+
+Path to the keystore file for SSL/TLS configuration of the management interface.
+
+#### `truststore`
+
+Type: *String*
+
+Path to the truststore file for SSL/TLS configuration of the management interface.
+
+#### `truststoresDir`
+
+Type: *String*
+
+Directory path containing truststore files for SSL/TLS configuration.
+
+<br/>
+
 ### `incrementalRepair`
 
 Type: *Boolean*
@@ -151,6 +223,21 @@ Default: *false*
 Sets the default repair type unless specifically defined for each run. Note that this is only supported with the PARALLEL repairParallelism setting. For more details in incremental repair, please refer to the following article.http://www.datastax.com/dev/blog/more-efficient-repairs
 
 *Note*: It is recommended to avoid using incremental repair before Cassandra 4.0 as subtle bugs can lead to overstreaming and cluster instabililty.
+
+<br/>
+
+### `subrangeIncrementalRepair`
+
+Type: *Boolean*
+
+Default: *false*
+
+Sets the default repair type unless specifically defined for each run. Note that this is only supported with the PARALLEL repairParallelism setting. For more details in incremental repair, please refer to the following article.http://www.datastax.com/dev/blog/more-efficient-repairs.
+This mode will split the repair jobs into sets of token ranges using the incremental mode.
+This will prevail over the `incrementalRepair` setting.
+
+
+*Note*: Subrange incremental repair is only available since Cassandra 4.0.
 
 <br/>
 
@@ -348,17 +435,45 @@ Defines the amount of days to wait between scheduling new repairs. The value con
 
 <br/>
 
+### `scheduleRetryOnError`
+
+Type: *Boolean*
+
+Default: *false*
+
+When enabled, repair schedules will be automatically retried if they fail due to errors. This can help with recovering from temporary failures or network issues.
+
+<br/>
+
+### `scheduleRetryDelay`
+
+Type: *String* (ISO 8601 Duration)
+
+Default: *PT1H* (1 hour)
+
+The delay period before retrying a failed repair schedule. This setting only takes effect when `scheduleRetryOnError` is enabled.
+
+<br/>
+
 ### `segmentCountPerNode`
 
 Type: *Integer*
 
-Default: *16*
+Default: *64*
 
 Defines the default amount of repair segments to create for newly registered Cassandra repair runs, for each node in the cluster. When running a repair run by Reaper, each segment is repaired separately by the Reaper process, until all the segments in a token ring are repaired. The count might be slightly off the defined value, as clusters residing in multiple data centers require additional small token ranges in addition to the expected. This value can be overwritten when executing a repair run via Reaper.
 
 In a 10 nodes cluster, setting a value of 20 segments per node will generate a repair run that splits the work into 200 token subranges. This number can vary due to vnodes (before 1.2.0, Reaper cannot create a segment with multiple token ranges, so the number of segments will be at least the total number of vnodes in the cluster). As Reaper tries to size segments evenly, the presence of very small token ranges can lead to have more segments than expected.
 
 <br/>
+
+## `purgeRecordsAfterInDays`
+
+Type: *Integer*
+
+Default: *30*
+
+Defines the amount of days after which a repair run will get purged from storage.
 
 ### `server`
 
@@ -415,7 +530,7 @@ When running multi region clusters in AWS, turn this setting to `true` in order 
 
 _**Since 2.1.0**_
 
-Sometimes it’s not possible for Cassandra nodes to broadcast addresses that will work for each and every client; for instance, they might broadcast private IPs because most clients are in the same network, but a particular client could be on another network and go through a router. For such cases, you can configure a custom address translator that will perform additional address translation based on configured mapping.
+Sometimes it's not possible for Cassandra nodes to broadcast addresses that will work for each and every client; for instance, they might broadcast private IPs because most clients are in the same network, but a particular client could be on another network and go through a router. For such cases, you can configure a custom address translator that will perform additional address translation based on configured mapping.
 
 ```yaml
 jmxAddressTranslator:
@@ -433,15 +548,26 @@ When running multi region clusters in AWS, set type to `ec2MultiRegion` in order
 
 ### `accessControl`
 
-Settings to activate and configure authentication for the web UI.
+Settings to activate and configure authentication for the web UI and REST API.
 Deleting or commenting that block from the yaml file will turn off authentication.
 
-```
+```yaml
 accessControl:
-  sessionTimeout: PT10M
-  shiro:
-    iniConfigs: ["file:/path/to/shiro.ini"]
+  enabled: true                    # Enable/disable authentication
+  sessionTimeout: PT10M            # Session timeout (ISO 8601 duration)
+  jwt:
+    secret: "your-jwt-secret-key"  # JWT signing secret (minimum 256 bits)
+    tokenExpirationTime: PT10M     # JWT token expiration
+  users:
+    - username: "admin"
+      password: "admin123"
+      roles: ["operator"]
+    - username: "user"
+      password: "user123"
+      roles: ["user"]
 ```
+
+For detailed authentication configuration and security considerations, see the [Authentication documentation](/docs/configuration/authentication/).
 
 ### `repairThreadCount`
 

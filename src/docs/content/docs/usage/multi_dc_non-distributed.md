@@ -1,13 +1,9 @@
-+++
-[menu.docs]
-name = "Multi DCs with One Reaper"
-weight = 50
-identifier = "multi_dc_single"
-parent = "usage"
-+++
-
-
-# Operating Multiple DCs with a Single Reaper
+---
+title: "Multi DCs with One Reaper"
+weight: 50
+identifier: "multi_dc_single"
+parent: "usage"
+---
 
 Reaper can operate clusters which has a multi datacenter deployment. The `datacenterAvailability` setting in the Reaper YAML file indicates to Reaper its deployment in relation to cluster data center network locality.
 
@@ -19,7 +15,7 @@ In the case where the JMX port is accessible (with or without authentication) fr
 datacenterAvailability: ALL
 ```
 
-This setup works with all backends : Apache Cassandra, Astra and Memory.
+This setup works with all backends : Apache Cassandra and Memory.
 
 
 {{< screenshot src="/img/singlereaper-multidc-all.png">}}
@@ -44,7 +40,7 @@ Be aware that this setup will not allow to handle backpressure for those remote 
 
 If multiple clusters are registered in Reaper it is required that Reaper can access all nodes in at least one data center in each of the registered clusters.
 
-This setup works with all backends : Apache Cassandra, Astra and Memory.
+This setup works with all backends : Apache Cassandra and Memory.
 
 
 {{< screenshot src="/img/singlereaper-multidc-local.png">}}

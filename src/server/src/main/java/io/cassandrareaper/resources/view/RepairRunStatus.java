@@ -23,29 +23,23 @@ import io.cassandrareaper.core.RepairUnit;
 import java.util.Collection;
 import java.util.UUID;
 
-import javax.annotation.Nullable;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nullable;
 import org.apache.cassandra.repair.RepairParallelism;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.format.ISODateTimeFormat;
 
-/**
- * Contains the data to be shown when querying repair run status.
- */
+/** Contains the data to be shown when querying repair run status. */
 public final class RepairRunStatus {
 
-  @JsonProperty
-  private String cause;
+  @JsonProperty private String cause;
 
-  @JsonProperty
-  private String owner;
+  @JsonProperty private String owner;
 
-  @JsonProperty
-  private UUID id;
+  @JsonProperty private UUID id;
 
   @JsonProperty("cluster_name")
   private String clusterName;
@@ -56,28 +50,25 @@ public final class RepairRunStatus {
   @JsonProperty("keyspace_name")
   private String keyspaceName;
 
-  @JsonProperty
-  private RepairRun.RunState state;
+  @JsonProperty private RepairRun.RunState state;
 
-  @JsonIgnore
-  private DateTime creationTime;
+  @JsonIgnore private DateTime creationTime;
 
-  @JsonIgnore
-  private DateTime startTime;
+  @JsonIgnore private DateTime startTime;
 
-  @JsonIgnore
-  private DateTime endTime;
+  @JsonIgnore private DateTime endTime;
 
-  @JsonIgnore
-  private DateTime pauseTime;
+  @JsonIgnore private DateTime pauseTime;
 
   @JsonIgnore private DateTime currentTime;
 
-  @JsonProperty
-  private double intensity;
+  @JsonProperty private double intensity;
 
   @JsonProperty("incremental_repair")
   private boolean incrementalRepair;
+
+  @JsonProperty("subrange_incremental_repair")
+  private boolean subrangeIncrementalRepair;
 
   @JsonProperty("total_segments")
   private int totalSegments;
@@ -91,11 +82,9 @@ public final class RepairRunStatus {
   @JsonProperty("last_event")
   private String lastEvent;
 
-  @JsonProperty
-  private String duration;
+  @JsonProperty private String duration;
 
-  @JsonIgnore
-  private DateTime estimatedTimeOfArrival;
+  @JsonIgnore private DateTime estimatedTimeOfArrival;
 
   @JsonProperty("nodes")
   private Collection<String> nodes;
@@ -118,12 +107,8 @@ public final class RepairRunStatus {
   @JsonProperty("adaptive_schedule")
   private boolean adaptiveSchedule;
 
-
-  /**
-   * Default public constructor Required for Jackson JSON parsing.
-   */
-  public RepairRunStatus() {
-  }
+  /** Default public constructor Required for Jackson JSON parsing. */
+  public RepairRunStatus() {}
 
   public RepairRunStatus(
       UUID runId,
@@ -142,6 +127,7 @@ public final class RepairRunStatus {
       DateTime pauseTime,
       double intensity,
       boolean incrementalRepair,
+      boolean subrangeIncrementalRepair,
       RepairParallelism repairParallelism,
       Collection<String> nodes,
       Collection<String> datacenters,
@@ -165,6 +151,7 @@ public final class RepairRunStatus {
     this.currentTime = DateTime.now();
     this.intensity = roundDoubleNicely(intensity);
     this.incrementalRepair = incrementalRepair;
+    this.subrangeIncrementalRepair = subrangeIncrementalRepair;
     this.totalSegments = totalSegments;
     this.repairParallelism = repairParallelism;
     this.segmentsRepaired = segmentsRepaired;
@@ -181,12 +168,14 @@ public final class RepairRunStatus {
       duration = null;
     } else {
       if (state == RepairRun.RunState.RUNNING || state == RepairRun.RunState.PAUSED) {
-        duration = DurationFormatUtils.formatDurationWords(
+        duration =
+            DurationFormatUtils.formatDurationWords(
                 new Duration(startTime.toInstant(), currentTime.toInstant()).getMillis(),
                 true,
                 false);
       } else if (endTime != null) {
-        duration = DurationFormatUtils.formatDurationWords(
+        duration =
+            DurationFormatUtils.formatDurationWords(
                 new Duration(startTime.toInstant(), endTime.toInstant()).getMillis(), true, false);
       } else {
         duration = null;
@@ -231,6 +220,7 @@ public final class RepairRunStatus {
         repairRun.getPauseTime(),
         repairRun.getIntensity(),
         repairUnit.getIncrementalRepair(),
+        repairUnit.getSubrangeIncrementalRepair(),
         repairRun.getRepairParallelism(),
         repairUnit.getNodes(),
         repairUnit.getDatacenters(),
@@ -413,6 +403,14 @@ public final class RepairRunStatus {
     this.incrementalRepair = incrementalRepair;
   }
 
+  public boolean getSubrangeIncrementalRepair() {
+    return subrangeIncrementalRepair;
+  }
+
+  public void setSubrangeIncrementalRepair(boolean subrangeIncrementalRepair) {
+    this.subrangeIncrementalRepair = subrangeIncrementalRepair;
+  }
+
   public int getTotalSegments() {
     return totalSegments;
   }
@@ -489,7 +487,6 @@ public final class RepairRunStatus {
   public void setBlacklistedTables(Collection<String> blacklistedTables) {
     this.blacklistedTables = blacklistedTables;
   }
-
 
   public int getRepairThreadCount() {
     return repairThreadCount;

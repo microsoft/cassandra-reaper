@@ -1,18 +1,15 @@
 /*
- * Copyright 2014-2017 Spotify AB
- * Copyright 2016-2019 The Last Pickle Ltd
+ * Copyright 2014-2017 Spotify AB Copyright 2016-2019 The Last Pickle Ltd
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package io.cassandrareaper;
@@ -25,41 +22,37 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import javax.annotation.Nullable;
-import javax.validation.Valid;
-import javax.validation.constraints.DecimalMin;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.NotNull;
-import javax.ws.rs.DefaultValue;
 
+import com.datastax.oss.driver.api.core.addresstranslation.AddressTranslator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.Configuration;
+import com.google.common.annotations.VisibleForTesting;
+import io.dropwizard.cassandra.BasicCassandraFactory;
+import io.dropwizard.cassandra.CassandraFactory;
 import io.dropwizard.client.HttpClientConfiguration;
+import io.dropwizard.core.Configuration;
+import jakarta.annotation.Nullable;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.DefaultValue;
 import org.apache.cassandra.repair.RepairParallelism;
 import org.hibernate.validator.constraints.NotEmpty;
-import org.secnod.dropwizard.shiro.ShiroConfiguration;
-import systems.composable.dropwizard.cassandra.CassandraFactory;
-import systems.composable.dropwizard.cassandra.network.AddressTranslatorFactory;
 
 public final class ReaperApplicationConfiguration extends Configuration {
 
   public static final int DEFAULT_MGMT_API_METRICS_PORT = 9000;
+  private static final int DEFAULT_MGMT_API_PORT = 8080;
   private static final int DEFAULT_SEGMENT_COUNT_PER_NODE = 64;
   private static final Integer DEFAULT_MAX_PENDING_COMPACTIONS = 20;
 
-  @JsonProperty
-  private Integer maxPendingCompactions;
+  @JsonProperty private Integer maxPendingCompactions;
 
-  @Deprecated
-  @JsonProperty
-  private Integer segmentCount;
+  @Deprecated @JsonProperty private Integer segmentCount;
 
-  @JsonProperty
-  private Integer segmentCountPerNode;
+  @JsonProperty private Integer segmentCountPerNode;
 
-  @JsonProperty
-  @NotNull
-  private RepairParallelism repairParallelism;
+  @JsonProperty @NotNull private RepairParallelism repairParallelism;
 
   @JsonProperty
   @NotNull
@@ -73,7 +66,10 @@ public final class ReaperApplicationConfiguration extends Configuration {
   private Boolean incrementalRepair;
 
   @JsonProperty
-  private Boolean blacklistTwcsTables;
+  @DefaultValue("false")
+  private Boolean subrangeIncrementalRepair;
+
+  @JsonProperty private Boolean blacklistTwcsTables;
 
   @DefaultValue("7")
   private Integer scheduleDaysBetween;
@@ -82,93 +78,74 @@ public final class ReaperApplicationConfiguration extends Configuration {
   @DefaultValue("false")
   private Boolean useAddressTranslator;
 
-  @Valid
-  private Optional<AddressTranslatorFactory> jmxAddressTranslator = Optional.empty();
+  @Valid private Optional<AddressTranslator> jmxAddressTranslator = Optional.empty();
 
-  @JsonProperty
-  @NotNull
-  private Integer repairRunThreadCount;
+  @JsonProperty @NotNull private Integer repairRunThreadCount;
 
-  @JsonProperty
-  @Nullable
-  private Integer maxParallelRepairs;
+  @JsonProperty @Nullable private Integer maxParallelRepairs;
 
-  @JsonProperty
-  @NotNull
-  private Integer hangingRepairTimeoutMins;
+  @JsonProperty @NotNull private Integer hangingRepairTimeoutMins;
 
-  @NotEmpty
-  private String storageType;
+  @NotEmpty private String storageType;
 
   private String enableCrossOrigin;
 
-  @JsonProperty
-  private Map<String, Integer> jmxPorts;
+  @JsonProperty private Map<String, Integer> jmxPorts;
 
-  @JsonProperty
-  private Jmxmp jmxmp = new Jmxmp();
+  @JsonProperty private Map<String, JmxCredentials> jmxCredentials;
 
-  @JsonProperty
-  private Map<String, JmxCredentials> jmxCredentials;
+  @JsonProperty private JmxCredentials jmxAuth;
 
-  @JsonProperty
-  private JmxCredentials jmxAuth;
+  @JsonProperty private HttpManagement httpManagement = new HttpManagement();
+  @JsonProperty private AutoSchedulingConfiguration autoScheduling;
 
-  @JsonProperty
-  private HttpManagement httpManagement = new HttpManagement();
-  @JsonProperty
-  private AutoSchedulingConfiguration autoScheduling;
   @JsonProperty
   @DefaultValue("true")
   private Boolean enableDynamicSeedList;
-  @JsonProperty
-  private Integer repairManagerSchedulingIntervalSeconds;
+
+  @JsonProperty private Integer repairManagerSchedulingIntervalSeconds;
+
   @JsonProperty
   @DefaultValue("false")
   private Boolean activateQueryLogger;
+
   @JsonProperty
   @DefaultValue("5")
   private Integer jmxConnectionTimeoutInSeconds;
+
   @JsonProperty
   @DefaultValue("7")
   private Integer clusterTimeoutInDays;
-  @JsonProperty
-  private DatacenterAvailability datacenterAvailability;
-  @JsonProperty
-  private AccessControlConfiguration accessControl;
-  @JsonProperty
-  private Integer repairThreadCount;
-  /**
-   * If set to more than 0, defines how many days of run history should be kept.
-   */
-  @Nullable
-  @JsonProperty
-  private Integer purgeRecordsAfterInDays;
-  /**
-   * If set to more than 0, defines how many runs to keep per repair unit.
-   */
-  @Nullable
-  @JsonProperty
-  private Integer numberOfRunsToKeepPerUnit;
-  private CassandraFactory cassandra = new CassandraFactory();
-  @JsonProperty
-  private Optional<String> enforcedLocalNode = Optional.empty();
-  @JsonProperty
-  private Optional<String> enforcedLocalClusterName = Optional.empty();
-  @JsonProperty
-  private Optional<String> enforcedLocalDatacenter = Optional.empty();
+
+  @JsonProperty private DatacenterAvailability datacenterAvailability;
+  @JsonProperty private Integer repairThreadCount;
+
+  /** If set to more than 0, defines how many days of run history should be kept. Default: 30 */
+  @Nullable @JsonProperty private Integer purgeRecordsAfterInDays = 30;
+
+  /** If set to more than 0, defines how many runs to keep per repair unit. */
+  @Nullable @JsonProperty private Integer numberOfRunsToKeepPerUnit;
+
+  private CassandraFactory cassandra = new BasicCassandraFactory();
+  @JsonProperty private Optional<String> enforcedLocalNode = Optional.empty();
+  @JsonProperty private Optional<String> enforcedLocalClusterName = Optional.empty();
+  @JsonProperty private Optional<String> enforcedLocalDatacenter = Optional.empty();
+
   @JsonProperty
   @DefaultValue("true")
   private Boolean enableConcurrentMigrations;
-  @JsonProperty
-  private Integer percentRepairedCheckIntervalMinutes;
-  private HttpClientConfiguration httpClient = new HttpClientConfiguration();
-  @JsonProperty
-  @Nullable
-  private CryptographFactory cryptograph;
 
-  @JsonProperty
-  private Integer mgmtApiMetricsPort;
+  @JsonProperty private Integer percentRepairedCheckIntervalMinutes;
+  private HttpClientConfiguration httpClient = new HttpClientConfiguration();
+  @JsonProperty @Nullable private CryptographFactory cryptograph;
+
+  @JsonProperty @Nullable private String persistenceStoragePath;
+
+  @JsonProperty private Boolean scheduleRetryOnError;
+
+  @JsonProperty private Duration scheduleRetryDelay;
+
+  @JsonProperty private AccessControlConfiguration accessControl;
 
   public HttpManagement getHttpManagement() {
     return httpManagement;
@@ -176,14 +153,6 @@ public final class ReaperApplicationConfiguration extends Configuration {
 
   public void setHttpManagement(HttpManagement httpManagement) {
     this.httpManagement = httpManagement;
-  }
-
-  public Jmxmp getJmxmp() {
-    return jmxmp;
-  }
-
-  public void setJmxmp(Jmxmp jmxmp) {
-    this.jmxmp = jmxmp;
   }
 
   public int getSegmentCount() {
@@ -234,6 +203,14 @@ public final class ReaperApplicationConfiguration extends Configuration {
     this.incrementalRepair = incrementalRepair;
   }
 
+  public boolean getSubrangeIncrementalRepair() {
+    return subrangeIncrementalRepair != null ? subrangeIncrementalRepair : false;
+  }
+
+  public void setSubrangeIncrementalRepair(boolean subrangeIncrementalRepair) {
+    this.subrangeIncrementalRepair = subrangeIncrementalRepair;
+  }
+
   public boolean getBlacklistTwcsTables() {
     return blacklistTwcsTables != null ? blacklistTwcsTables : false;
   }
@@ -259,9 +236,7 @@ public final class ReaperApplicationConfiguration extends Configuration {
   }
 
   public int getMaxParallelRepairs() {
-    return maxParallelRepairs == null
-        ? 2
-        : maxParallelRepairs;
+    return maxParallelRepairs == null ? 2 : maxParallelRepairs;
   }
 
   public void setMaxParallelRepairs(int maxParallelRepairs) {
@@ -289,11 +264,14 @@ public final class ReaperApplicationConfiguration extends Configuration {
   }
 
   public int getRepairManagerSchedulingIntervalSeconds() {
-    return this.repairManagerSchedulingIntervalSeconds == null ? 30 : this.repairManagerSchedulingIntervalSeconds;
+    return this.repairManagerSchedulingIntervalSeconds == null
+        ? 30
+        : this.repairManagerSchedulingIntervalSeconds;
   }
 
   @JsonProperty
-  public void setRepairManagerSchedulingIntervalSeconds(int repairManagerSchedulingIntervalSeconds) {
+  public void setRepairManagerSchedulingIntervalSeconds(
+      int repairManagerSchedulingIntervalSeconds) {
     this.repairManagerSchedulingIntervalSeconds = repairManagerSchedulingIntervalSeconds;
   }
 
@@ -395,7 +373,9 @@ public final class ReaperApplicationConfiguration extends Configuration {
   }
 
   public DatacenterAvailability getDatacenterAvailability() {
-    return this.datacenterAvailability != null ? this.datacenterAvailability : DatacenterAvailability.ALL;
+    return this.datacenterAvailability != null
+        ? this.datacenterAvailability
+        : DatacenterAvailability.ALL;
   }
 
   @JsonProperty("datacenterAvailability")
@@ -403,24 +383,12 @@ public final class ReaperApplicationConfiguration extends Configuration {
     this.datacenterAvailability = datacenterAvailability;
   }
 
-  public AccessControlConfiguration getAccessControl() {
-    return accessControl;
-  }
-
-  public void setAccessControl(AccessControlConfiguration accessControl) {
-    this.accessControl = accessControl;
-  }
-
-  public boolean isAccessControlEnabled() {
-    return getAccessControl() != null;
-  }
-
   public int getRepairThreadCount() {
     return repairThreadCount != null ? repairThreadCount : 1;
   }
 
   public Integer getPurgeRecordsAfterInDays() {
-    return purgeRecordsAfterInDays == null ? 0 : purgeRecordsAfterInDays;
+    return purgeRecordsAfterInDays == null ? 30 : purgeRecordsAfterInDays;
   }
 
   @JsonProperty("purgeRecordsAfterInDays")
@@ -491,12 +459,12 @@ public final class ReaperApplicationConfiguration extends Configuration {
   }
 
   @JsonProperty
-  public Optional<AddressTranslatorFactory> getJmxAddressTranslator() {
+  public Optional<AddressTranslator> getJmxAddressTranslator() {
     return jmxAddressTranslator;
   }
 
   @JsonProperty
-  public void setJmxAddressTranslator(Optional<AddressTranslatorFactory> jmxAddressTranslator) {
+  public void setJmxAddressTranslator(Optional<AddressTranslator> jmxAddressTranslator) {
     this.jmxAddressTranslator = jmxAddressTranslator;
   }
 
@@ -509,13 +477,37 @@ public final class ReaperApplicationConfiguration extends Configuration {
     this.cryptograph = cryptograph;
   }
 
-  public int getMgmtApiMetricsPort() {
-    return mgmtApiMetricsPort == null ? DEFAULT_MGMT_API_METRICS_PORT : mgmtApiMetricsPort;
+  public void setPersistenceStoragePath(@Nullable String persistenceStoragePath) {
+    this.persistenceStoragePath = persistenceStoragePath;
   }
 
-  @JsonProperty("mgmtApiMetricsPort")
-  public void setMgmtApiMetricsPort(int mgmtApiMetricsPort) {
-    this.mgmtApiMetricsPort = mgmtApiMetricsPort;
+  @Nullable
+  public String getPersistenceStoragePath() {
+    return persistenceStoragePath;
+  }
+
+  public Boolean isScheduleRetryOnError() {
+    return scheduleRetryOnError != null ? scheduleRetryOnError : false;
+  }
+
+  public void setScheduleRetryOnError(Boolean scheduleRetryOnError) {
+    this.scheduleRetryOnError = scheduleRetryOnError;
+  }
+
+  public Duration getScheduleRetryDelay() {
+    return scheduleRetryDelay != null ? scheduleRetryDelay : Duration.ofMinutes(60);
+  }
+
+  public void setScheduleRetryDelay(Duration scheduleRetryDelay) {
+    this.scheduleRetryDelay = scheduleRetryDelay;
+  }
+
+  public AccessControlConfiguration getAccessControl() {
+    return accessControl;
+  }
+
+  public void setAccessControl(AccessControlConfiguration accessControl) {
+    this.accessControl = accessControl;
   }
 
   public enum DatacenterAvailability {
@@ -523,14 +515,17 @@ public final class ReaperApplicationConfiguration extends Configuration {
     ALL,
     /* We require jmx access to all nodes in the local datacenter */
     LOCAL,
-    /* Each datacenter requires at minimum one reaper instance that has jmx access to all nodes in that datacenter */
+    /*
+     * Each datacenter requires at minimum one reaper instance that has jmx access to all nodes in
+     * that datacenter
+     */
     EACH,
     /* Sets Reaper in sidecar mode where each Cassandra node has a collocated Reaper instance */
     SIDECAR;
 
-
     /**
-     * Check if the current datacenter availability mode is to have collocation between Reaper and a DC/node.
+     * Check if the current datacenter availability mode is to have collocation between Reaper and a
+     * DC/node.
      *
      * @return true if we're in a collocated mode, false otherwise
      */
@@ -548,36 +543,27 @@ public final class ReaperApplicationConfiguration extends Configuration {
 
   public static final class AutoSchedulingConfiguration {
 
-    @JsonProperty
-    private Boolean enabled;
+    @JsonProperty private Boolean enabled;
 
-    @JsonProperty
-    private Duration initialDelayPeriod;
+    @JsonProperty private Duration initialDelayPeriod;
 
-    @JsonProperty
-    private Duration periodBetweenPolls;
+    @JsonProperty private Duration periodBetweenPolls;
 
-    @JsonProperty
-    private Duration timeBeforeFirstSchedule;
+    @JsonProperty private Duration timeBeforeFirstSchedule;
 
-    @JsonProperty
-    private Duration scheduleSpreadPeriod;
+    @JsonProperty private Duration scheduleSpreadPeriod;
 
-    @JsonProperty
-    private List<String> excludedKeyspaces = Collections.emptyList();
+    @JsonProperty private List<String> excludedKeyspaces = Collections.emptyList();
 
-    @JsonProperty
-    private List<String> excludedClusters = Collections.emptyList();
+    @JsonProperty private List<String> excludedClusters = Collections.emptyList();
 
-    @JsonProperty
-    private Boolean adaptive;
+    @JsonProperty private Boolean adaptive;
 
-    @JsonProperty
-    private Boolean incremental;
+    @JsonProperty private Boolean incremental;
 
-    @JsonProperty
-    private Integer percentUnrepairedThreshold;
+    @JsonProperty private Boolean subrangeIncrementalRepair;
 
+    @JsonProperty private Integer percentUnrepairedThreshold;
 
     public Boolean isEnabled() {
       return enabled;
@@ -628,7 +614,8 @@ public final class ReaperApplicationConfiguration extends Configuration {
     }
 
     public void setExcludedKeyspaces(List<String> excludedKeyspaces) {
-      this.excludedKeyspaces = null != excludedKeyspaces ? excludedKeyspaces : Collections.emptyList();
+      this.excludedKeyspaces =
+          null != excludedKeyspaces ? excludedKeyspaces : Collections.emptyList();
     }
 
     public List<String> getExcludedClusters() {
@@ -653,6 +640,14 @@ public final class ReaperApplicationConfiguration extends Configuration {
 
     public void setIncremental(Boolean incremental) {
       this.incremental = incremental;
+    }
+
+    public Boolean subrangeIncrementalRepair() {
+      return subrangeIncrementalRepair == null ? false : subrangeIncrementalRepair;
+    }
+
+    public void setSubrangeIncrementalRepair(Boolean subrangeIncrementalRepair) {
+      this.subrangeIncrementalRepair = subrangeIncrementalRepair;
     }
 
     public Integer getPercentUnrepairedThreshold() {
@@ -682,48 +677,164 @@ public final class ReaperApplicationConfiguration extends Configuration {
     }
   }
 
+  public static final class HttpManagement {
+    @JsonProperty private Boolean enabled = false;
+
+    @JsonProperty private String keystore;
+
+    @JsonProperty private String truststore;
+
+    @JsonProperty private String truststoresDir;
+
+    @JsonProperty private Integer mgmtApiMetricsPort;
+
+    @JsonProperty private Integer managementApiPort;
+
+    @JsonProperty private Boolean metricsTLSEnabled = false;
+
+    public Boolean isEnabled() {
+      return enabled;
+    }
+
+    // TODO: Add ports and root paths here.
+
+    public String getKeystore() {
+      return keystore;
+    }
+
+    public String getTruststore() {
+      return truststore;
+    }
+
+    public String getTruststoresDir() {
+      return truststoresDir;
+    }
+
+    @VisibleForTesting
+    public void setEnabled(Boolean enabled) {
+      this.enabled = enabled;
+    }
+
+    @VisibleForTesting
+    public void setKeystore(String keystore) {
+      this.keystore = keystore;
+    }
+
+    @VisibleForTesting
+    public void setTruststore(String truststore) {
+      this.truststore = truststore;
+    }
+
+    @VisibleForTesting
+    public void setTruststoresDir(String truststoresDir) {
+      this.truststoresDir = truststoresDir;
+    }
+
+    public int getMgmtApiMetricsPort() {
+      return mgmtApiMetricsPort == null ? DEFAULT_MGMT_API_METRICS_PORT : mgmtApiMetricsPort;
+    }
+
+    public void setManagementApiPort(Integer managementApiPort) {
+      this.managementApiPort = managementApiPort;
+    }
+
+    public Integer getManagementApiPort() {
+      return managementApiPort == null ? DEFAULT_MGMT_API_PORT : managementApiPort;
+    }
+
+    @JsonProperty("mgmtApiMetricsPort")
+    public void setMgmtApiMetricsPort(int mgmtApiMetricsPort) {
+      this.mgmtApiMetricsPort = mgmtApiMetricsPort;
+    }
+
+    public Boolean isMetricsTLSEnabled() {
+      return metricsTLSEnabled;
+    }
+
+    @VisibleForTesting
+    public void setMetricsTLSEnabled(Boolean metricsTLSEnabled) {
+      this.metricsTLSEnabled = metricsTLSEnabled;
+    }
+  }
+
   public static final class AccessControlConfiguration {
+    @JsonProperty private Boolean enabled = true;
+    @JsonProperty private Duration sessionTimeout;
+    @JsonProperty private JwtConfiguration jwt;
+    @JsonProperty private List<UserConfiguration> users = Collections.emptyList();
 
-    @JsonProperty
-    private ShiroConfiguration shiro;
-    @JsonProperty
-    private Duration sessionTimeout;
+    public Boolean isEnabled() {
+      return enabled;
+    }
 
-    public ShiroConfiguration getShiroConfiguration() {
-      return shiro;
+    public void setEnabled(Boolean enabled) {
+      this.enabled = enabled;
     }
 
     public Duration getSessionTimeout() {
       return sessionTimeout != null ? sessionTimeout : Duration.ofMinutes(10);
     }
 
+    public void setSessionTimeout(Duration sessionTimeout) {
+      this.sessionTimeout = sessionTimeout;
+    }
 
+    public JwtConfiguration getJwt() {
+      return jwt;
+    }
+
+    public void setJwt(JwtConfiguration jwt) {
+      this.jwt = jwt;
+    }
+
+    public List<UserConfiguration> getUsers() {
+      return users != null ? users : Collections.emptyList();
+    }
+
+    public void setUsers(List<UserConfiguration> users) {
+      this.users = users != null ? users : Collections.emptyList();
+    }
   }
 
-  public static final class Jmxmp {
+  public static final class JwtConfiguration {
+    @JsonProperty private String secret;
 
-    @JsonProperty
-    private Boolean ssl = false;
-
-    @JsonProperty
-    private Boolean enabled = false;
-
-    public Boolean useSsl() {
-      return ssl;
+    public String getSecret() {
+      return secret;
     }
 
-    public Boolean isEnabled() {
-      return enabled;
+    public void setSecret(String secret) {
+      this.secret = secret;
     }
   }
 
-  public static final class HttpManagement {
-    @JsonProperty
-    private Boolean enabled = false;
+  public static final class UserConfiguration {
+    @JsonProperty private String username;
+    @JsonProperty private String password;
+    @JsonProperty private List<String> roles = Collections.emptyList();
 
-    public Boolean isEnabled() {
-      return enabled;
+    public String getUsername() {
+      return username;
     }
-    // TODO: Add ports and root paths here.
+
+    public void setUsername(String username) {
+      this.username = username;
+    }
+
+    public String getPassword() {
+      return password;
+    }
+
+    public void setPassword(String password) {
+      this.password = password;
+    }
+
+    public List<String> getRoles() {
+      return roles != null ? roles : Collections.emptyList();
+    }
+
+    public void setRoles(List<String> roles) {
+      this.roles = roles != null ? roles : Collections.emptyList();
+    }
   }
 }

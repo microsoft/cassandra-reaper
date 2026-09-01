@@ -69,11 +69,9 @@ autoScheduling:
   timeBeforeFirstSchedule: PT5M
   scheduleSpreadPeriod: PT6H
 
-accessControl:
-  sessionTimeout: PT30S
-  shiro:
-    iniConfigs: ["classpath:shiro.ini"]
-
 cryptograph:
   type: symmetric
   systemPropertySecret: REAPER_ENCRYPTION_KEY
+
+# Use empty path for in-memory SQLite (non-persistent for tests)
+persistenceStoragePath: ""
