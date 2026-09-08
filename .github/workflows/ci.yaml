@@ -33,7 +33,7 @@ jobs:
       REAPER_ENCRYPTION_KEY: SECRET_KEY
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -44,7 +44,7 @@ jobs:
           mv src/server/target/site/jacoco src/server/target/site/jacoco_ut    
           mvn -B org.jacoco:jacoco-maven-plugin:${{ env.JACOCO_VERSION }}:prepare-agent surefire:test org.jacoco:jacoco-maven-plugin:${{ env.JACOCO_VERSION }}:report -Dtest=ReaperShiroIT
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
   docker-tests:
     name: Docker Image Tests
@@ -56,7 +56,7 @@ jobs:
         test-type: [docker]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -68,7 +68,7 @@ jobs:
 
       - name: Setup tmate session
         if: "failure()"
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
         timeout-minutes: 30
 
   its-ccm-local:
@@ -99,7 +99,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -127,11 +127,11 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
       - name: Setup tmate session
         if: "failure()"
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
         timeout-minutes: 30
 
   its-ccm-cass:
@@ -161,7 +161,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -188,11 +188,11 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
       - name: Setup tmate session
         if: "failure()"
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
         timeout-minutes: 30
 
   its-sidecar:
@@ -227,7 +227,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -256,7 +256,7 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
   its-http-management:
     needs: [ build ]
@@ -286,7 +286,7 @@ jobs:
             jdk-version: '8'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -318,10 +318,10 @@ jobs:
       # Add a tmate action to debug failures. 
       - name: Setup tmate session
         if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
+        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
         timeout-minutes: 30
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
   its-each:
     needs: [docker-tests, its-ccm-local, its-ccm-cass]
@@ -345,7 +345,7 @@ jobs:
           #  experimental: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -374,7 +374,7 @@ jobs:
           CUCUMBER_OPTIONS: ${{ matrix.cucumber-options }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
   its-distributed:
     needs: [docker-tests, its-ccm-local, its-ccm-cass]
@@ -405,7 +405,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -434,7 +434,7 @@ jobs:
           GRIM_MIN: ${{ matrix.grim-min }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
   its-flapping:
     needs: [docker-tests, its-ccm-local, its-ccm-cass]
@@ -459,7 +459,7 @@ jobs:
           #  jdk-version: '11'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -489,7 +489,7 @@ jobs:
           GRIM_MIN: ${{ matrix.grim-min }}
           JDK_VERSION: ${{ matrix.jdk-version }}
 
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@29386c70ef20e286228c72b668a06fd0e8399192 # v1.5.2
 
   release:
     name: Release Reaper
@@ -498,7 +498,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
 
       - name: Setup
         uses: ./.github/actions/setup
@@ -522,13 +522,13 @@ jobs:
           MAVEN_OPTS="-Xmx384m" mvn -B install -DskipTests
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@2b82ce82d56a2a04d2637cd93a637ae1b359c0a7 # v2.2.0
         with:
           platforms: 'arm64,arm'
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@885d1462b80bc1c1c7f0b00334ad271f09369c55 # v2.10.0
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@465a07811f14bebb1938fbed4728c6a1ff8901fc # v2.2.0
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
@@ -539,7 +539,7 @@ jobs:
           echo "Tags: ${{ env.DOCKER_TAG1 }} and ${{ env.DOCKER_TAG2 }}"
       - name: Build image and push
         id: docker_build
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@0a97817b6ade9f46837855d676c4cca3a2471fc9 # v4.2.1
         with:
           file: src/server/src/main/docker/Dockerfile
           context: .
@@ -568,7 +568,7 @@ jobs:
           echo "RPM_RELEASE_FILE=${rpmReleaseFile}" >> $GITHUB_ENV
 
       - name: Upload artifacts to GitHub Release
-        uses: fnkr/github-action-ghr@v1
+        uses: fnkr/github-action-ghr@8ed8fc2f0a781340421ad61acdc0e3d665a95692 # v1
         if: github.event_name == 'release' && github.event.action == 'published'
         env:
           GHR_PATH: src/packages
