@@ -99,17 +99,29 @@ server:
     appenders: []
 
 cassandra:
-  clusterName: "test"
-  contactPoints: ["127.0.0.1"]
-  keyspace: reaper_db
+  type: basic
+  sessionName: "test"
+  contactPoints:
+    - host: 127.0.0.1
+      port: 9042
+  sessionKeyspaceName: reaper_db
   loadBalancingPolicy:
-    type: tokenAware
-    shuffleReplicas: true
-    subPolicy:
-      type: dcAwareRoundRobin
-      localDC:
-      usedHostsPerRemoteDC: 0
-      allowRemoteDCsForLocalConsistencyLevel: false
+    type: default
+    localDataCenter: dc1
+  retryPolicy:
+    type: default
+  schemaOptions:
+    agreementIntervalMilliseconds: 60000
+    agreementTimeoutSeconds: 60
+    agreementWarnOnFailure: true
+  requestOptionsFactory:
+    requestTimeout: 60s
+    requestDefaultIdempotence: true
+  authProvider:
+    type: plain-text
+    username: cassandra
+    password: cassandra
+
 autoScheduling:
   enabled: false
   initialDelayPeriod: PT15S
@@ -144,6 +156,24 @@ autoScheduling:
 
 # Authentication is enabled by default
 accessControl:
+  enabled: ${REAPER_AUTH_ENABLED:-true}
   sessionTimeout: PT10M
-  shiro:
-    iniConfigs: ["classpath:shiro.ini"]
+  # JWT-based authentication configuration
+  jwt:
+    # Secret key for signing JWT tokens (should be at least 256 bits for HS256)
+    # Use environment variable in production: ${JWT_SECRET:-defaultValue}
+    secret: "${JWT_SECRET:-MySecretKeyForJWTWhichMustBeLongEnoughForHS256Algorithm}"
+    # Token expiration time (optional, defaults to session timeout)
+    tokenExpirationTime: "${JWT_TOKEN_EXPIRATION:-PT10M}"
+  # User store configuration
+  # IMPORTANT: Configure your users below. Authentication will fail if no users are configured.
+  # Never use default passwords in production - always set REAPER_AUTH_PASSWORD and other env vars!
+  users:
+    # Admin user - CHANGE THESE CREDENTIALS!
+    - username: "${REAPER_AUTH_USER}"
+      password: "${REAPER_AUTH_PASSWORD}"
+      roles: ["operator"]
+    # Optional: Read-only user
+    # - username: "${REAPER_READ_USER}"
+    #   password: "${REAPER_READ_USER_PASSWORD}"
+    #   roles: ["user"]

@@ -36,34 +36,36 @@ if [ "$1" = 'cassandra-reaper' ]; then
     if [ -z "$REAPER_HEAP_SIZE" ]; then
         REAPER_HEAP_SIZE="1G"
     fi
-    # get around `/usr/local/bin/configure-persistence.sh: line 65: can't create /etc/cassandra-reaper/cassandra-reaper.yml: Interrupted system call` unknown error
-    touch /etc/cassandra-reaper/cassandra-reaper.yml
 
+    cp /etc/cassandra-reaper/cassandra-reaper.yml /etc/cassandra-reaper/config/cassandra-reaper.yml
+
+    /usr/local/bin/configure-authentication.sh
     /usr/local/bin/configure-persistence.sh
-    /usr/local/bin/configure-webui-authentication.sh
     /usr/local/bin/configure-metrics.sh
     /usr/local/bin/configure-jmx-credentials.sh
+    /usr/local/bin/configure-server.sh
     exec java \
             ${JAVA_OPTS} \
             -Xms${REAPER_HEAP_SIZE} \
             -Xmx${REAPER_HEAP_SIZE} \
+            -Djava.io.tmpdir=${REAPER_TMP_DIRECTORY} \
             -cp "/usr/local/lib/*" io.cassandrareaper.ReaperApplication server \
-            /etc/cassandra-reaper/cassandra-reaper.yml
+            /etc/cassandra-reaper/config/cassandra-reaper.yml
 fi
 
 if [ "$1" = 'schema-migration' ]; then
 
-    # get around `/usr/local/bin/configure-persistence.sh: line 65: can't create /etc/cassandra-reaper/cassandra-reaper.yml: Interrupted system call` unknown error
-    touch /etc/cassandra-reaper/cassandra-reaper.yml
+    cp /etc/cassandra-reaper/cassandra-reaper.yml /etc/cassandra-reaper/config/cassandra-reaper.yml
 
+    /usr/local/bin/configure-authentication.sh
     /usr/local/bin/configure-persistence.sh
-    /usr/local/bin/configure-webui-authentication.sh
     /usr/local/bin/configure-metrics.sh
     /usr/local/bin/configure-jmx-credentials.sh
     exec java \
             ${JAVA_OPTS} \
+            -Djava.io.tmpdir=${REAPER_TMP_DIRECTORY} \
             -cp "/usr/local/lib/*" io.cassandrareaper.ReaperApplication schema-migration \
-            /etc/cassandra-reaper/cassandra-reaper.yml
+            /etc/cassandra-reaper/config/cassandra-reaper.yml
 fi
 
 if [ "$1" = 'register-clusters' ]; then

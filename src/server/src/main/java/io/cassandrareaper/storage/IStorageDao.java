@@ -26,13 +26,21 @@ import io.cassandrareaper.storage.repairsegment.IRepairSegmentDao;
 import io.cassandrareaper.storage.repairunit.IRepairUnitDao;
 import io.cassandrareaper.storage.snapshot.ISnapshotDao;
 
+import java.util.Set;
+import java.util.UUID;
+
 import io.dropwizard.lifecycle.Managed;
 
-/**
- * API definition for cassandra-reaper.
- */
-public interface IStorageDao extends Managed,
-    IMetricsDao {
+/** API definition for cassandra-reaper. */
+public interface IStorageDao extends Managed, IMetricsDao {
+
+  boolean lockRunningRepairsForNodes(UUID repairId, UUID segmentId, Set<String> replicas);
+
+  boolean renewRunningRepairsForNodes(UUID repairId, UUID segmentId, Set<String> replicas);
+
+  boolean releaseRunningRepairsForNodes(UUID repairId, UUID segmentId, Set<String> replicas);
+
+  Set<UUID> getLockedSegmentsForRun(UUID runId);
 
   boolean isStorageConnected();
 
@@ -49,5 +57,4 @@ public interface IStorageDao extends Managed,
   IRepairScheduleDao getRepairScheduleDao();
 
   IClusterDao getClusterDao();
-
 }

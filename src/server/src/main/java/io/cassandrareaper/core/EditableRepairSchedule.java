@@ -19,16 +19,14 @@ package io.cassandrareaper.core;
 import io.cassandrareaper.validators.NullOrNotBlank;
 import io.cassandrareaper.validators.ValidEditableRepairSchedule;
 
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.apache.cassandra.repair.RepairParallelism;
 
 @ValidEditableRepairSchedule
 public class EditableRepairSchedule {
-  @NullOrNotBlank
-  protected String owner;
+  @NullOrNotBlank protected String owner;
 
   @JsonProperty(value = "repair_parallelism")
   protected RepairParallelism repairParallelism;
@@ -54,7 +52,6 @@ public class EditableRepairSchedule {
 
   protected Boolean adaptive;
 
-
   public EditableRepairSchedule() {
     this.owner = null;
     this.repairParallelism = null;
@@ -63,7 +60,6 @@ public class EditableRepairSchedule {
     this.segmentCountPerNode = null;
     this.percentUnrepairedThreshold = null;
     this.adaptive = null;
-
   }
 
   public String getOwner() {
@@ -121,5 +117,4 @@ public class EditableRepairSchedule {
   public void setAdaptive(boolean adaptive) {
     this.adaptive = adaptive;
   }
-
 }

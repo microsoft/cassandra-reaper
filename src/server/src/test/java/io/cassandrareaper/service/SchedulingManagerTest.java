@@ -39,9 +39,15 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricRegistry;
-import com.datastax.driver.core.utils.UUIDs;
+import com.datastax.oss.driver.api.core.uuid.Uuids;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.cassandra.repair.RepairParallelism;
@@ -50,12 +56,6 @@ import org.joda.time.DateTimeUtils;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 public final class SchedulingManagerTest {
 
@@ -72,13 +72,16 @@ public final class SchedulingManagerTest {
     context.isDistributed.set(true);
     List<UUID> reaperInstances = Lists.newArrayList();
     // Generate some fake reaper instances id after the current instance id was generated
-    IntStream.range(0, 5).forEach(i -> reaperInstances.add(UUIDs.timeBased()));
+    IntStream.range(0, 5).forEach(i -> reaperInstances.add(Uuids.timeBased()));
     // Add the current reaper instance id to the list
     reaperInstances.add(context.reaperInstanceId);
     context.storage = mock(CassandraStorageFacade.class);
-    when(((CassandraStorageFacade) context.storage).getRunningReapers()).thenReturn(reaperInstances);
-    SchedulingManager schedulingManager = SchedulingManager.create(context, context.storage.getRepairRunDao());
-    assertTrue("The eldest Reaper instance should be the scheduling leader",
+    when(((CassandraStorageFacade) context.storage).getRunningReapers())
+        .thenReturn(reaperInstances);
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(context, context.storage.getRepairRunDao());
+    assertTrue(
+        "The eldest Reaper instance should be the scheduling leader",
         schedulingManager.currentReaperIsSchedulingLeader());
   }
 
@@ -86,15 +89,18 @@ public final class SchedulingManagerTest {
   public void testCurrentReaperIsNotSchedulingLeader() {
     List<UUID> reaperInstances = Lists.newArrayList();
     // Generate some fake reaper instances id before the current instance id is generated
-    IntStream.range(0, 5).forEach(i -> reaperInstances.add(UUIDs.timeBased()));
+    IntStream.range(0, 5).forEach(i -> reaperInstances.add(Uuids.timeBased()));
     AppContext context = new AppContext();
     context.isDistributed.set(true);
     // Add the current reaper instance id to the list
     reaperInstances.add(context.reaperInstanceId);
     context.storage = mock(CassandraStorageFacade.class);
-    when(((CassandraStorageFacade) context.storage).getRunningReapers()).thenReturn(reaperInstances);
-    SchedulingManager schedulingManager = SchedulingManager.create(context, context.storage.getRepairRunDao());
-    assertFalse("The eldest Reaper instance should be the scheduling leader",
+    when(((CassandraStorageFacade) context.storage).getRunningReapers())
+        .thenReturn(reaperInstances);
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(context, context.storage.getRepairRunDao());
+    assertFalse(
+        "The eldest Reaper instance should be the scheduling leader",
         schedulingManager.currentReaperIsSchedulingLeader());
   }
 
@@ -104,61 +110,70 @@ public final class SchedulingManagerTest {
     context.isDistributed.set(true);
     List<UUID> reaperInstances = Lists.newArrayList();
     // Generate some fake reaper instances id after the current instance id was generated
-    IntStream.range(0, 5).forEach(i -> reaperInstances.add(UUIDs.timeBased()));
+    IntStream.range(0, 5).forEach(i -> reaperInstances.add(Uuids.timeBased()));
     // Add the current reaper instance id to the list
     reaperInstances.add(context.reaperInstanceId);
     context.storage = mock(CassandraStorageFacade.class);
-    when(((CassandraStorageFacade) context.storage).getRunningReapers()).thenReturn(Collections.emptyList());
-    SchedulingManager schedulingManager = SchedulingManager.create(context, context.storage.getRepairRunDao());
-    assertFalse("If we cannot get the list of running reapers, none should be scheduling leader",
+    when(((CassandraStorageFacade) context.storage).getRunningReapers())
+        .thenReturn(Collections.emptyList());
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(context, context.storage.getRepairRunDao());
+    assertFalse(
+        "If we cannot get the list of running reapers, none should be scheduling leader",
         schedulingManager.currentReaperIsSchedulingLeader());
   }
 
   @Test
   public void lastRepairRunIsOldEnoughTest() {
-    RepairRun repairRun = RepairRun.builder("test", UUIDs.timeBased())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.DONE)
-        .startTime(DateTime.now().minusMinutes(10))
-        .endTime(DateTime.now().minusMinutes(5))
-        .build(UUIDs.timeBased());
+    RepairRun repairRun =
+        RepairRun.builder("test", Uuids.timeBased())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.DONE)
+            .startTime(DateTime.now().minusMinutes(10))
+            .endTime(DateTime.now().minusMinutes(5))
+            .build(Uuids.timeBased());
 
     AppContext context = new AppContext();
     context.storage = mock(CassandraStorageFacade.class);
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
     Mockito.when(mockedRepairRunDao.getRepairRun(any())).thenReturn(Optional.of(repairRun));
-    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao()).thenReturn(mockedRepairRunDao);
+    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao())
+        .thenReturn(mockedRepairRunDao);
 
     context.config = new ReaperApplicationConfiguration();
     context.config.setPercentRepairedCheckIntervalMinutes(1);
-    SchedulingManager schedulingManager = SchedulingManager.create(context, context.storage.getRepairRunDao());
-    RepairSchedule repairSchedule = RepairSchedule.builder(UUIDs.timeBased())
-        .daysBetween(1)
-        .nextActivation(DateTime.now())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1)
-        .segmentCountPerNode(10)
-        .lastRun(repairRun.getId())
-        .percentUnrepairedThreshold(5)
-        .build(UUIDs.timeBased());
-    assertTrue("Enough time must pass since last run to trigger a new one",
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(context, context.storage.getRepairRunDao());
+    RepairSchedule repairSchedule =
+        RepairSchedule.builder(Uuids.timeBased())
+            .daysBetween(1)
+            .nextActivation(DateTime.now())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1)
+            .segmentCountPerNode(10)
+            .lastRun(repairRun.getId())
+            .percentUnrepairedThreshold(5)
+            .build(Uuids.timeBased());
+    assertTrue(
+        "Enough time must pass since last run to trigger a new one",
         schedulingManager.lastRepairRunIsOldEnough(repairSchedule));
   }
 
   @Test
   public void lastRepairRunIsNotOldEnoughTest() {
-    RepairRun repairRun = RepairRun.builder("test", UUIDs.timeBased())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.DONE)
-        .startTime(DateTime.now().minusMinutes(10))
-        .endTime(DateTime.now().minusMinutes(1))
-        .build(UUIDs.timeBased());
+    RepairRun repairRun =
+        RepairRun.builder("test", Uuids.timeBased())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.DONE)
+            .startTime(DateTime.now().minusMinutes(10))
+            .endTime(DateTime.now().minusMinutes(1))
+            .build(Uuids.timeBased());
 
     AppContext context = new AppContext();
     context.storage = mock(CassandraStorageFacade.class);
@@ -166,22 +181,25 @@ public final class SchedulingManagerTest {
     context.repairManager = repairManager;
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
     Mockito.when(mockedRepairRunDao.getRepairRun(any())).thenReturn(Optional.of(repairRun));
-    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao()).thenReturn(mockedRepairRunDao);
-
+    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao())
+        .thenReturn(mockedRepairRunDao);
 
     context.config = new ReaperApplicationConfiguration();
     context.config.setPercentRepairedCheckIntervalMinutes(10);
-    SchedulingManager schedulingManager = SchedulingManager.create(context, context.storage.getRepairRunDao());
-    RepairSchedule repairSchedule = RepairSchedule.builder(UUIDs.timeBased())
-        .daysBetween(1)
-        .nextActivation(DateTime.now())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1)
-        .segmentCountPerNode(10)
-        .lastRun(repairRun.getId())
-        .percentUnrepairedThreshold(5)
-        .build(UUIDs.timeBased());
-    assertFalse("Enough time must pass since last run to trigger a new one",
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(context, context.storage.getRepairRunDao());
+    RepairSchedule repairSchedule =
+        RepairSchedule.builder(Uuids.timeBased())
+            .daysBetween(1)
+            .nextActivation(DateTime.now())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1)
+            .segmentCountPerNode(10)
+            .lastRun(repairRun.getId())
+            .percentUnrepairedThreshold(5)
+            .build(Uuids.timeBased());
+    assertFalse(
+        "Enough time must pass since last run to trigger a new one",
         schedulingManager.lastRepairRunIsOldEnough(repairSchedule));
   }
 
@@ -192,51 +210,58 @@ public final class SchedulingManagerTest {
     RepairManager repairManager = mock(RepairManager.class);
     context.repairManager = repairManager;
 
-    RepairUnit repairUnit = RepairUnit.builder()
-        .clusterName("test")
-        .incrementalRepair(true)
-        .keyspaceName("test")
-        .repairThreadCount(1)
-        .timeout(30)
-        .build(UUIDs.timeBased());
+    RepairUnit repairUnit =
+        RepairUnit.builder()
+            .clusterName("test")
+            .incrementalRepair(true)
+            .subrangeIncrementalRepair(true)
+            .keyspaceName("test")
+            .repairThreadCount(1)
+            .timeout(30)
+            .build(Uuids.timeBased());
 
-    DateTime startTime = DateTime.now().minusMinutes(10);
-    DateTime endTime = DateTime.now().minusMinutes(5);
-    RepairRun repairRun = RepairRun.builder("test", repairUnit.getId())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.DONE)
-        .startTime(startTime)
-        .endTime(endTime)
-        .build(UUIDs.timeBased());
+    // Last repair ended 25 minutes ago (needs to be > 2 * percentRepairedCheckIntervalMinutes)
+    DateTime startTime = DateTime.now().minusMinutes(30);
+    DateTime endTime = DateTime.now().minusMinutes(25);
+    RepairRun repairRun =
+        RepairRun.builder("test", repairUnit.getId())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.DONE)
+            .startTime(startTime)
+            .endTime(endTime)
+            .build(Uuids.timeBased());
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
     Mockito.when(mockedRepairRunDao.getRepairRun(any())).thenReturn(Optional.of(repairRun));
-    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao()).thenReturn(mockedRepairRunDao);
+    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao())
+        .thenReturn(mockedRepairRunDao);
 
-    RepairSchedule repairSchedule = RepairSchedule.builder(repairUnit.getId())
-        .daysBetween(1)
-        .nextActivation(DateTime.now())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1)
-        .segmentCountPerNode(10)
-        .lastRun(repairRun.getId())
-        .percentUnrepairedThreshold(5)
-        .state(RepairSchedule.State.ACTIVE)
-        .build(UUIDs.timeBased());
+    RepairSchedule repairSchedule =
+        RepairSchedule.builder(repairUnit.getId())
+            .daysBetween(1)
+            .nextActivation(DateTime.now())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1)
+            .segmentCountPerNode(10)
+            .lastRun(repairRun.getId())
+            .percentUnrepairedThreshold(5)
+            .state(RepairSchedule.State.ACTIVE)
+            .build(Uuids.timeBased());
     IRepairUnitDao mockedRepairUnitDao = mock(IRepairUnitDao.class);
     Mockito.when(context.storage.getRepairUnitDao()).thenReturn(mockedRepairUnitDao);
     when(mockedRepairUnitDao.getRepairUnit(any(UUID.class))).thenReturn(repairUnit);
 
-    PercentRepairedMetric percentRepairedMetric = PercentRepairedMetric.builder()
-        .withCluster("test")
-        .withKeyspaceName("test")
-        .withNode("127.0.0.1")
-        .withRepairScheduleId(repairSchedule.getId())
-        .withTableName("test")
-        .withPercentRepaired(90)
-        .build();
+    PercentRepairedMetric percentRepairedMetric =
+        PercentRepairedMetric.builder()
+            .withCluster("test")
+            .withKeyspaceName("test")
+            .withNode("127.0.0.1")
+            .withRepairScheduleId(repairSchedule.getId())
+            .withTableName("test")
+            .withPercentRepaired(90)
+            .build();
 
     when(context.storage.getPercentRepairedMetrics(any(), any(), any()))
         .thenReturn(Lists.newArrayList(percentRepairedMetric));
@@ -250,15 +275,17 @@ public final class SchedulingManagerTest {
     context.config = new ReaperApplicationConfiguration();
     context.config.setPercentRepairedCheckIntervalMinutes(10);
     RepairRunService repairRunService = mock(RepairRunService.class);
-    RepairRun newRepairRun = RepairRun.builder("test", repairUnit.getId())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.NOT_STARTED)
-        .build(UUIDs.timeBased());
-    SchedulingManager schedulingManager = SchedulingManager.create(context, () -> repairRunService,
-        context.storage.getRepairRunDao());
+    RepairRun newRepairRun =
+        RepairRun.builder("test", repairUnit.getId())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.NOT_STARTED)
+            .build(Uuids.timeBased());
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(
+            context, () -> repairRunService, context.storage.getRepairRunDao());
     when(repairRunService.registerRepairRun(any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(newRepairRun);
     schedulingManager.manageSchedule(repairSchedule);
@@ -274,49 +301,55 @@ public final class SchedulingManagerTest {
     RepairManager repairManager = mock(RepairManager.class);
     context.repairManager = repairManager;
 
-    RepairUnit repairUnit = RepairUnit.builder()
-        .clusterName("test")
-        .incrementalRepair(true)
-        .keyspaceName("test")
-        .repairThreadCount(1)
-        .timeout(30)
-        .build(UUIDs.timeBased());
+    RepairUnit repairUnit =
+        RepairUnit.builder()
+            .clusterName("test")
+            .incrementalRepair(true)
+            .subrangeIncrementalRepair(true)
+            .keyspaceName("test")
+            .repairThreadCount(1)
+            .timeout(30)
+            .build(Uuids.timeBased());
 
-    RepairRun repairRun = RepairRun.builder("test", repairUnit.getId())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.DONE)
-        .startTime(DateTime.now().minusMinutes(10))
-        .endTime(DateTime.now().minusMinutes(5))
-        .build(UUIDs.timeBased());
+    RepairRun repairRun =
+        RepairRun.builder("test", repairUnit.getId())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.DONE)
+            .startTime(DateTime.now().minusMinutes(10))
+            .endTime(DateTime.now().minusMinutes(5))
+            .build(Uuids.timeBased());
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
     Mockito.when(mockedRepairRunDao.getRepairRun(any())).thenReturn(Optional.of(repairRun));
-    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao()).thenReturn(mockedRepairRunDao);
+    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao())
+        .thenReturn(mockedRepairRunDao);
 
-    RepairSchedule repairSchedule = RepairSchedule.builder(repairUnit.getId())
-        .daysBetween(1)
-        .nextActivation(DateTime.now().plusDays(1))
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1)
-        .segmentCountPerNode(10)
-        .lastRun(repairRun.getId())
-        .percentUnrepairedThreshold(5)
-        .state(RepairSchedule.State.ACTIVE)
-        .build(UUIDs.timeBased());
+    RepairSchedule repairSchedule =
+        RepairSchedule.builder(repairUnit.getId())
+            .daysBetween(1)
+            .nextActivation(DateTime.now().plusDays(1))
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1)
+            .segmentCountPerNode(10)
+            .lastRun(repairRun.getId())
+            .percentUnrepairedThreshold(5)
+            .state(RepairSchedule.State.ACTIVE)
+            .build(Uuids.timeBased());
     IRepairUnitDao mockedRepairUnitDao = mock(IRepairUnitDao.class);
     Mockito.when(context.storage.getRepairUnitDao()).thenReturn(mockedRepairUnitDao);
     when(mockedRepairUnitDao.getRepairUnit(any(UUID.class))).thenReturn(repairUnit);
 
-    PercentRepairedMetric percentRepairedMetric = PercentRepairedMetric.builder()
-        .withCluster("test")
-        .withKeyspaceName("test")
-        .withNode("127.0.0.1")
-        .withRepairScheduleId(repairSchedule.getId())
-        .withTableName("test")
-        .withPercentRepaired(99)
-        .build();
+    PercentRepairedMetric percentRepairedMetric =
+        PercentRepairedMetric.builder()
+            .withCluster("test")
+            .withKeyspaceName("test")
+            .withNode("127.0.0.1")
+            .withRepairScheduleId(repairSchedule.getId())
+            .withTableName("test")
+            .withPercentRepaired(99)
+            .build();
 
     when(context.storage.getPercentRepairedMetrics(any(), any(), any()))
         .thenReturn(Lists.newArrayList(percentRepairedMetric));
@@ -327,15 +360,17 @@ public final class SchedulingManagerTest {
     context.config = new ReaperApplicationConfiguration();
     context.config.setPercentRepairedCheckIntervalMinutes(10);
     RepairRunService repairRunService = mock(RepairRunService.class);
-    RepairRun newRepairRun = RepairRun.builder("test", repairUnit.getId())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.NOT_STARTED)
-        .build(UUIDs.timeBased());
-    SchedulingManager schedulingManager = SchedulingManager.create(context, () -> repairRunService,
-        context.storage.getRepairRunDao());
+    RepairRun newRepairRun =
+        RepairRun.builder("test", repairUnit.getId())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.NOT_STARTED)
+            .build(Uuids.timeBased());
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(
+            context, () -> repairRunService, context.storage.getRepairRunDao());
     when(repairRunService.registerRepairRun(any(), any(), any(), any(), any(), any(), any(), any()))
         .thenReturn(newRepairRun);
     schedulingManager.manageSchedule(repairSchedule);
@@ -351,51 +386,180 @@ public final class SchedulingManagerTest {
     RepairManager repairManager = mock(RepairManager.class);
     context.repairManager = repairManager;
 
-    RepairUnit repairUnit = RepairUnit.builder()
-        .clusterName("test")
-        .incrementalRepair(true)
-        .keyspaceName("test")
-        .repairThreadCount(1)
-        .timeout(30)
-        .build(UUIDs.timeBased());
+    RepairUnit repairUnit =
+        RepairUnit.builder()
+            .clusterName("test")
+            .incrementalRepair(true)
+            .subrangeIncrementalRepair(true)
+            .keyspaceName("test")
+            .repairThreadCount(1)
+            .timeout(30)
+            .build(Uuids.timeBased());
 
-    RepairRun repairRun = RepairRun.builder("test", repairUnit.getId())
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1.0)
-        .segmentCount(10)
-        .tables(Collections.emptySet())
-        .runState(RunState.DONE)
-        .startTime(DateTime.now().minusMinutes(10))
-        .endTime(DateTime.now().minusMinutes(5))
-        .build(UUIDs.timeBased());
+    RepairRun repairRun =
+        RepairRun.builder("test", repairUnit.getId())
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .runState(RunState.DONE)
+            .startTime(DateTime.now().minusMinutes(10))
+            .endTime(DateTime.now().minusMinutes(5))
+            .build(Uuids.timeBased());
     IRepairRunDao mockedRepairRunDao = mock(IRepairRunDao.class);
     Mockito.when(mockedRepairRunDao.getRepairRun(any())).thenReturn(Optional.of(repairRun));
-    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao()).thenReturn(mockedRepairRunDao);
-
+    Mockito.when(((CassandraStorageFacade) context.storage).getRepairRunDao())
+        .thenReturn(mockedRepairRunDao);
 
     IRepairUnitDao mockedRepairUnitDao = mock(IRepairUnitDao.class);
     Mockito.when(context.storage.getRepairUnitDao()).thenReturn(mockedRepairUnitDao);
     when(mockedRepairUnitDao.getRepairUnit(any(UUID.class))).thenReturn(repairUnit);
 
-    RepairSchedule repairSchedule = RepairSchedule.builder(repairUnit.getId())
-        .daysBetween(1)
-        .nextActivation(DateTime.now().plusDays(1))
-        .repairParallelism(RepairParallelism.PARALLEL)
-        .intensity(1)
-        .segmentCountPerNode(10)
-        .lastRun(repairRun.getId())
-        .percentUnrepairedThreshold(5)
-        .state(RepairSchedule.State.PAUSED)
-        .build(UUIDs.timeBased());
+    RepairSchedule repairSchedule =
+        RepairSchedule.builder(repairUnit.getId())
+            .daysBetween(1)
+            .nextActivation(DateTime.now().plusDays(1))
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1)
+            .segmentCountPerNode(10)
+            .lastRun(repairRun.getId())
+            .percentUnrepairedThreshold(5)
+            .state(RepairSchedule.State.PAUSED)
+            .build(Uuids.timeBased());
 
     context.config = new ReaperApplicationConfiguration();
     RepairRunService repairRunService = mock(RepairRunService.class);
-    SchedulingManager schedulingManager = SchedulingManager.create(context, () -> repairRunService,
-        context.storage.getRepairRunDao());
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(
+            context, () -> repairRunService, context.storage.getRepairRunDao());
     schedulingManager.manageSchedule(repairSchedule);
 
     // We're below the threshold and the repair shouldn't start
     Mockito.verify(context.repairManager, Mockito.times(0)).startRepairRun(any());
+  }
+
+  // A terminated run (DONE/ERROR/ABORTED) must not block the schedule from firing again.
+  @Test
+  public void manageScheduleStartsNewRunWhenPreviousRunIsDone() throws ReaperException {
+    RepairUnit unit = testUnit();
+    UUID scheduleId = Uuids.timeBased();
+    RepairSchedule schedule = dueSchedule(unit.getId(), scheduleId);
+    AppContext context =
+        contextWithExistingRuns(unit, scheduledRun(unit.getId(), scheduleId, RunState.DONE));
+    when(context.storage.getClusterDao()).thenReturn(mock(IClusterDao.class));
+
+    RepairRunService repairRunService = mock(RepairRunService.class);
+    when(repairRunService.registerRepairRun(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(scheduledRun(unit.getId(), scheduleId, RunState.NOT_STARTED));
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(
+            context, () -> repairRunService, context.storage.getRepairRunDao());
+
+    assertTrue(
+        "A completed previous run must not block the schedule from firing again",
+        schedulingManager.manageSchedule(schedule));
+    Mockito.verify(context.repairManager).startRepairRun(any());
+  }
+
+  // An in-flight run that does not come from this schedule (e.g. a manual run or another schedule
+  // on the same unit) must not postpone this schedule.
+  @Test
+  public void manageScheduleStartsNewRunWhenActiveRunIsFromAnotherCause() throws ReaperException {
+    RepairUnit unit = testUnit();
+    UUID scheduleId = Uuids.timeBased();
+    RepairSchedule schedule = dueSchedule(unit.getId(), scheduleId);
+    RepairRun otherRun = scheduledRun(unit.getId(), Uuids.timeBased(), RunState.RUNNING);
+    AppContext context = contextWithExistingRuns(unit, otherRun);
+    when(context.storage.getClusterDao()).thenReturn(mock(IClusterDao.class));
+
+    RepairRunService repairRunService = mock(RepairRunService.class);
+    when(repairRunService.registerRepairRun(any(), any(), any(), any(), any(), any(), any(), any()))
+        .thenReturn(scheduledRun(unit.getId(), scheduleId, RunState.NOT_STARTED));
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(
+            context, () -> repairRunService, context.storage.getRepairRunDao());
+
+    boolean started = schedulingManager.manageSchedule(schedule);
+
+    assertTrue("A run that does not come from this schedule must not block it", started);
+    Mockito.verify(context.repairManager).startRepairRun(any());
+  }
+
+  // Counterpart to the above: an in-flight run from this schedule must postpone the trigger rather
+  // than start a concurrent run.
+  @Test
+  public void manageScheduleDoesNotStartNewRunWhenPreviousRunIsActive() throws ReaperException {
+    RepairUnit unit = testUnit();
+    UUID scheduleId = Uuids.timeBased();
+    RepairSchedule schedule = dueSchedule(unit.getId(), scheduleId);
+    AppContext context =
+        contextWithExistingRuns(unit, scheduledRun(unit.getId(), scheduleId, RunState.RUNNING));
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(
+            context, () -> mock(RepairRunService.class), context.storage.getRepairRunDao());
+
+    assertFalse(
+        "An in-flight run from the same schedule must postpone the trigger",
+        schedulingManager.manageSchedule(schedule));
+    Mockito.verify(context.repairManager, Mockito.never()).startRepairRun(any());
+  }
+
+  private static RepairUnit testUnit() {
+    return RepairUnit.builder()
+        .clusterName("test")
+        .incrementalRepair(false)
+        .subrangeIncrementalRepair(false)
+        .keyspaceName("test")
+        .repairThreadCount(1)
+        .timeout(30)
+        .build(Uuids.timeBased());
+  }
+
+  private static RepairSchedule dueSchedule(UUID unitId, UUID scheduleId) {
+    return RepairSchedule.builder(unitId)
+        .daysBetween(7)
+        .nextActivation(DateTime.now().minusMinutes(1))
+        .repairParallelism(RepairParallelism.PARALLEL)
+        .intensity(1)
+        .segmentCountPerNode(10)
+        .state(RepairSchedule.State.ACTIVE)
+        .build(scheduleId);
+  }
+
+  private static RepairRun scheduledRun(UUID unitId, UUID scheduleId, RunState state) {
+    RepairRun.Builder builder =
+        RepairRun.builder("test", unitId)
+            .repairParallelism(RepairParallelism.PARALLEL)
+            .intensity(1.0)
+            .segmentCount(10)
+            .tables(Collections.emptySet())
+            .cause("scheduled run (schedule id " + scheduleId + ')')
+            .runState(state);
+    if (state != RunState.NOT_STARTED) {
+      builder.startTime(DateTime.now().minusHours(1));
+    }
+    if (state.isTerminated()) {
+      builder.endTime(DateTime.now().minusMinutes(30));
+    }
+    return builder.build(Uuids.timeBased());
+  }
+
+  private static AppContext contextWithExistingRuns(RepairUnit unit, RepairRun... existingRuns) {
+    AppContext context = new AppContext();
+    context.config = new ReaperApplicationConfiguration();
+    context.repairManager = mock(RepairManager.class);
+    context.storage = mock(CassandraStorageFacade.class);
+
+    IRepairUnitDao repairUnitDao = mock(IRepairUnitDao.class);
+    when(context.storage.getRepairUnitDao()).thenReturn(repairUnitDao);
+    when(repairUnitDao.getRepairUnit(any(UUID.class))).thenReturn(unit);
+
+    IRepairRunDao repairRunDao = mock(IRepairRunDao.class);
+    when(context.storage.getRepairRunDao()).thenReturn(repairRunDao);
+    when(repairRunDao.getRepairRunsForUnit(any())).thenReturn(Lists.newArrayList(existingRuns));
+
+    when(context.storage.getRepairScheduleDao()).thenReturn(mock(IRepairScheduleDao.class));
+    return context;
   }
 
   @Test
@@ -406,30 +570,67 @@ public final class SchedulingManagerTest {
     context.config.setPercentRepairedCheckIntervalMinutes(10);
     context.metricRegistry = mock(MetricRegistry.class);
     List<UUID> scheduleIds = Lists.newArrayList();
-    IntStream.range(0, 4).forEach(i -> scheduleIds.add(UUIDs.timeBased()));
+    IntStream.range(0, 4).forEach(i -> scheduleIds.add(Uuids.timeBased()));
     HashMap<String, Metric> metrics = Maps.newHashMap();
-    scheduleIds.stream().forEach(scheduleId ->
-        metrics.put(MetricRegistry.name(RepairScheduleService.MILLIS_SINCE_LAST_REPAIR_METRIC_NAME,
-            "test", "test", scheduleId.toString()), null));
+    scheduleIds.stream()
+        .forEach(
+            scheduleId ->
+                metrics.put(
+                    MetricRegistry.name(
+                        RepairScheduleService.MILLIS_SINCE_LAST_REPAIR_METRIC_NAME,
+                        "test",
+                        "test",
+                        scheduleId.toString()),
+                    null));
 
-    List<RepairSchedule> repairSchedules = scheduleIds.stream().map(scheduleId ->
-        RepairSchedule.builder(scheduleId)
-            .daysBetween(1)
-            .nextActivation(DateTime.now().plusDays(1))
-            .repairParallelism(RepairParallelism.PARALLEL)
-            .intensity(1)
-            .segmentCountPerNode(10)
-            .lastRun(UUIDs.timeBased())
-            .percentUnrepairedThreshold(5)
-            .state(RepairSchedule.State.ACTIVE)
-            .build(scheduleId)).collect(Collectors.toList());
+    List<RepairSchedule> repairSchedules =
+        scheduleIds.stream()
+            .map(
+                scheduleId ->
+                    RepairSchedule.builder(scheduleId)
+                        .daysBetween(1)
+                        .nextActivation(DateTime.now().plusDays(1))
+                        .repairParallelism(RepairParallelism.PARALLEL)
+                        .intensity(1)
+                        .segmentCountPerNode(10)
+                        .lastRun(Uuids.timeBased())
+                        .percentUnrepairedThreshold(5)
+                        .state(RepairSchedule.State.ACTIVE)
+                        .build(scheduleId))
+            .collect(Collectors.toList());
 
     // Removing a schedule should trigger the removal of one metric
     repairSchedules.remove(0);
     when(context.metricRegistry.getMetrics()).thenReturn(metrics);
-    SchedulingManager schedulingManager = SchedulingManager.create(context, () -> null,
-        context.storage.getRepairRunDao());
+    SchedulingManager schedulingManager =
+        SchedulingManager.create(context, () -> null, context.storage.getRepairRunDao());
     schedulingManager.cleanupMetricsRegistry(repairSchedules);
     Mockito.verify(context.metricRegistry, Mockito.times(1)).remove(any());
+  }
+
+  @Test
+  public void shouldLogErrorAndContinueRunningWhenSchedulingExceptionOccurs() {
+    AppContext contextWithRunningReaper = new AppContext();
+    contextWithRunningReaper.isRunning.set(true);
+    contextWithRunningReaper.storage = mock(CassandraStorageFacade.class);
+
+    IRepairScheduleDao scheduleDaoThatThrowsException = mock(IRepairScheduleDao.class);
+    RuntimeException simulatedDatabaseFailure =
+        new RuntimeException("Simulated quorum failure in DC");
+
+    when(contextWithRunningReaper.storage.getRepairScheduleDao())
+        .thenReturn(scheduleDaoThatThrowsException);
+    when(scheduleDaoThatThrowsException.getAllRepairSchedules())
+        .thenThrow(simulatedDatabaseFailure);
+
+    SchedulingManager schedulingManagerUnderTest =
+        SchedulingManager.create(
+            contextWithRunningReaper, contextWithRunningReaper.storage.getRepairRunDao());
+
+    schedulingManagerUnderTest.run();
+
+    assertTrue(
+        "Reaper context should remain running after scheduling exception",
+        contextWithRunningReaper.isRunning.get());
   }
 }

@@ -17,8 +17,15 @@
 
 package io.cassandrareaper.acceptance;
 
-import cucumber.api.CucumberOptions;
-import cucumber.api.junit.Cucumber;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Comparator;
+import java.util.stream.Stream;
+
+import io.cucumber.junit.Cucumber;
+import io.cucumber.junit.CucumberOptions;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -27,11 +34,8 @@ import org.slf4j.LoggerFactory;
 
 @RunWith(Cucumber.class)
 @CucumberOptions(
-    features = {
-      "classpath:io.cassandrareaper.acceptance/integration_reaper_metrics.feature"
-    },
-    plugin = {"pretty"}
-    )
+    features = {"classpath:io.cassandrareaper.acceptance/integration_reaper_metrics.feature"},
+    plugin = {"pretty"})
 public class ReaperMetricsIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReaperMetricsIT.class);
@@ -46,6 +50,9 @@ public class ReaperMetricsIT {
         "setting up testing Reaper runner with {} seed hosts defined and memory storage",
         TestContext.TEST_CLUSTER_SEED_HOSTS.size());
 
+    // We now have persistence in the memory store, so we need to clean up the storage folder before
+    // starting the tests
+    deleteFolderContents("/tmp/reaper/storage/");
     runner = new ReaperTestJettyRunner(MEMORY_CONFIG_FILE);
     BasicSteps.addReaperRunner(runner);
   }
@@ -56,4 +63,22 @@ public class ReaperMetricsIT {
     runner.runnerInstance.after();
   }
 
+  public static void deleteFolderContents(String folderPath) throws IOException {
+    // Check if the path exists
+    Path path = Paths.get(folderPath);
+    if (!Files.exists(path)) {
+      return;
+    }
+    try (Stream<Path> walk = Files.walk(path)) {
+      walk.sorted(Comparator.reverseOrder())
+          .forEach(
+              p -> {
+                try {
+                  Files.delete(p);
+                } catch (IOException e) {
+                  throw new RuntimeException("Failed to delete " + p, e);
+                }
+              });
+    }
+  }
 }

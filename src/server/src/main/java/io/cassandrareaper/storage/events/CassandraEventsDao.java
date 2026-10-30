@@ -25,9 +25,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import com.datastax.driver.core.PreparedStatement;
-import com.datastax.driver.core.Row;
-import com.datastax.driver.core.Session;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.common.base.Preconditions;
 
 public class CassandraEventsDao implements IEventsDao {
@@ -35,35 +35,38 @@ public class CassandraEventsDao implements IEventsDao {
   PreparedStatement getDiagnosticEventPrepStmt;
   PreparedStatement deleteDiagnosticEventPrepStmt;
   PreparedStatement saveDiagnosticEventPrepStmt;
-  private final Session session;
+  private final CqlSession session;
 
-  public CassandraEventsDao(Session session) {
+  public CassandraEventsDao(CqlSession session) {
     this.session = session;
     prepareStatements();
   }
 
   private void prepareStatements() {
     getDiagnosticEventsPrepStmt = session.prepare("SELECT * FROM diagnostic_event_subscription");
-    getDiagnosticEventPrepStmt = session.prepare("SELECT * FROM diagnostic_event_subscription WHERE id = ?");
-    deleteDiagnosticEventPrepStmt = session.prepare("DELETE FROM diagnostic_event_subscription WHERE id = ?");
+    getDiagnosticEventPrepStmt =
+        session.prepare("SELECT * FROM diagnostic_event_subscription WHERE id = ?");
+    deleteDiagnosticEventPrepStmt =
+        session.prepare("DELETE FROM diagnostic_event_subscription WHERE id = ?");
 
-    saveDiagnosticEventPrepStmt = session.prepare("INSERT INTO diagnostic_event_subscription "
-        + "(id,cluster,description,nodes,events,export_sse,export_file_logger,export_http_endpoint)"
-        + " VALUES(?,?,?,?,?,?,?,?)");
+    saveDiagnosticEventPrepStmt =
+        session.prepare(
+            "INSERT INTO diagnostic_event_subscription "
+                + "(id,cluster,description,nodes,events,export_sse,export_file_logger,export_http_endpoint)"
+                + " VALUES(?,?,?,?,?,?,?,?)");
   }
 
   static DiagEventSubscription createDiagEventSubscription(Row row) {
     return new DiagEventSubscription(
-        Optional.of(row.getUUID("id")),
+        Optional.of(row.getUuid("id")),
         row.getString("cluster"),
-        Optional.of(row.getString("description")),
+        Optional.ofNullable(row.getString("description")),
         row.getSet("nodes", String.class),
         row.getSet("events", String.class),
         row.getBool("export_sse"),
         row.getString("export_file_logger"),
         row.getString("export_http_endpoint"));
   }
-
 
   @Override
   public Collection<DiagEventSubscription> getEventSubscriptions() {
@@ -95,15 +98,16 @@ public class CassandraEventsDao implements IEventsDao {
   public DiagEventSubscription addEventSubscription(DiagEventSubscription subscription) {
     Preconditions.checkArgument(subscription.getId().isPresent());
 
-    session.execute(saveDiagnosticEventPrepStmt.bind(
-        subscription.getId().get(),
-        subscription.getCluster(),
-        subscription.getDescription(),
-        subscription.getNodes(),
-        subscription.getEvents(),
-        subscription.getExportSse(),
-        subscription.getExportFileLogger(),
-        subscription.getExportHttpEndpoint()));
+    session.execute(
+        saveDiagnosticEventPrepStmt.bind(
+            subscription.getId().get(),
+            subscription.getCluster(),
+            subscription.getDescription(),
+            subscription.getNodes(),
+            subscription.getEvents(),
+            subscription.getExportSse(),
+            subscription.getExportFileLogger(),
+            subscription.getExportHttpEndpoint()));
 
     return subscription;
   }

@@ -20,13 +20,13 @@ package io.cassandrareaper.core;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.UUID;
-import javax.annotation.Nullable;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nullable;
 import org.joda.time.DateTime;
 
 @JsonDeserialize(builder = RepairSegment.Builder.class)
@@ -43,10 +43,10 @@ public final class RepairSegment {
   private final String coordinatorHost;
   private final DateTime startTime;
   private final DateTime endTime;
-  private final Map<String, String> replicas;
-  // hostID field is only ever populated for incremental repairs. For full repairs it is always null.
+  private final Map<String, String> replicas = new ConcurrentHashMap<>();
+  // hostID field is only ever populated for incremental repairs. For full repairs it is always
+  // null.
   private final UUID hostID;
-
 
   private RepairSegment(Builder builder, @Nullable UUID id) {
     this.id = id;
@@ -58,9 +58,9 @@ public final class RepairSegment {
     this.coordinatorHost = builder.coordinatorHost;
     this.startTime = builder.startTime;
     this.endTime = builder.endTime;
-    this.replicas = builder.replicas != null
-        ? ImmutableMap.copyOf(builder.replicas)
-        : null;
+    if (builder.replicas != null) {
+      this.replicas.putAll(builder.replicas);
+    }
     this.hostID = builder.hostID;
   }
 
@@ -258,13 +258,14 @@ public final class RepairSegment {
       return this;
     }
 
-
     public RepairSegment build() {
       // a null segmentId is a special case where the storage uses a sequence for it
       Preconditions.checkNotNull(runId);
       if (STRICT) {
-        Preconditions.checkState(null != startTime || null == endTime, "if endTime is set, so must startTime be set");
-        Preconditions.checkState(null == endTime || State.DONE == state, "endTime can only be set if segment is DONE");
+        Preconditions.checkState(
+            null != startTime || null == endTime, "if endTime is set, so must startTime be set");
+        Preconditions.checkState(
+            null == endTime || State.DONE == state, "endTime can only be set if segment is DONE");
 
         Preconditions.checkState(
             null != startTime || State.NOT_STARTED == state,

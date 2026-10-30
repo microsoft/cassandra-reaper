@@ -17,26 +17,32 @@ runs:
   using: "composite"
   steps:
       - name: Setup Maven Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven3-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven3-
 
-      - name: Setup Java
-        uses: actions/setup-java@v2
+      - name: Setup Java 11
+        uses: actions/setup-java@v4
         with:
           distribution: 'adopt' # See 'Supported distributions' for available options
           java-version: '11'
 
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'adopt' # See 'Supported distributions' for available options
+          java-version: '17'
+
       - name: Setup Node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v4
         with:
           node-version: '10.x'
 
       - name: Setup Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           architecture: 'x64'

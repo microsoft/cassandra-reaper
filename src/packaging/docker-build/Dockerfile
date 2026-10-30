@@ -30,13 +30,14 @@ RUN apt-get update \
         build-essential \
         git \
         openjdk-8-jdk \
-        openjdk-11-jdk \
+        openjdk-17-jdk \
         maven \
         nodejs \
         python2 \
         rpm \
         ruby-dev \
     && mvn --version \
+    && gem install dotenv -v 2.8.1 \
     && gem install fpm \
     && npm install -g bower
 

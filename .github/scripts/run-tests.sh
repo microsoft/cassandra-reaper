@@ -14,18 +14,25 @@
 # limitations under the License.
 
 echo "Starting Script step..."
-JACOCO_VERSION="0.8.6"
+JACOCO_VERSION="0.8.12"
 REAPER_ENCRYPTION_KEY="SECRET_KEY"
+
+# cucumber.options is no longer supported in Cucumber 7+; convert to cucumber.filter.tags.
+# CUCUMBER_OPTIONS is expected to be in the form '--tags @<expression>'.
+if [[ -n "${CUCUMBER_OPTIONS}" ]]; then
+  CUCUMBER_FILTER_TAGS="-Dcucumber.filter.tags=$(echo "${CUCUMBER_OPTIONS}" | sed 's/--tags //')"
+else
+  CUCUMBER_FILTER_TAGS=""
+fi
 
 set -xe
 
 function set_java_home() {
     major_version=$1
-    for jdk in /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/${major_version}*/; 
+    for jdk in /opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/${major_version}*/*/;
     do 
-        export JAVA_HOME="${jdk/}"x64/
+        export JAVA_HOME="${jdk/}"
         echo "JAVA_HOME is set to $JAVA_HOME"
-        export JAVA_TOOL_OPTIONS="-Dcom.sun.jndi.rmiURLParsing=legacy"
     done
 }
 
@@ -45,6 +52,9 @@ add_management_api () {
      elif [[ "$CASSANDRA_VERSION" == *"4.1"* ]]; then
         mvn dependency:copy -Dartifact=io.k8ssandra:datastax-mgmtapi-agent-4.1.x:$MGMT_API_VERSION -f src/server/pom.xml -DoutputDirectory=/tmp -Dmdep.stripVersion=true -Dmdep.overWriteReleases=true
         ln -s /tmp/datastax-mgmtapi-agent-4.1.x.jar /tmp/datastax-mgmtapi-agent.jar
+     elif [[ "$CASSANDRA_VERSION" == *"5.0"* ]]; then
+        mvn dependency:copy -Dartifact=io.k8ssandra:datastax-mgmtapi-agent-5.0.x:$MGMT_API_VERSION -f src/server/pom.xml -DoutputDirectory=/tmp -Dmdep.stripVersion=true -Dmdep.overWriteReleases=true
+        ln -s /tmp/datastax-mgmtapi-agent-5.0.x.jar /tmp/datastax-mgmtapi-agent.jar
      fi
    fi
   echo "JVM_OPTS=\"\$JVM_OPTS -javaagent:/tmp/datastax-mgmtapi-agent.jar\"" >> ~/.ccm/test/node$1/conf/cassandra-env.sh
@@ -56,6 +66,7 @@ case "${TEST_TYPE}" in
         exit 1
         ;;
     "deploy")
+        set_java_home 17
         mvn --version -B
         if [ "${TRAVIS_BRANCH}" = "master" ]
             then
@@ -77,8 +88,8 @@ case "${TEST_TYPE}" in
         echo "${TEST_TYPE}" | grep -q ccm && sleep 30 || sleep 120
         ccm status
         ccm node1 nodetool -- -u cassandra -pw cassandrapassword status
-        # Reaper requires JDK11 for compilation
-        set_java_home 11
+        # Reaper requires JDK17 for compilation
+        set_java_home 17
         case "${STORAGE_TYPE}" in
             "")
                 echo "ERROR: Environment variable STORAGE_TYPE is unspecified."
@@ -86,14 +97,14 @@ case "${TEST_TYPE}" in
                 ;;
             "local")
                 mvn -B package -DskipTests
-                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx256m"  -Dtest=ReaperShiroIT -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
-                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx256m"  -Dtest=ReaperIT -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx256m"  -Dtest=ReaperShiroIT $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx256m"  -Dtest=ReaperIT $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
                 ;;
             "cassandra"|"elassandra")
                 ccm node1 cqlsh -e "DROP KEYSPACE reaper_db" || true
                 mvn -B package -DskipTests
-                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx384m" -Dtest=ReaperCassandraIT -Dgrim.reaper.min=${GRIM_MIN} -Dgrim.reaper.max=${GRIM_MAX} -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
-                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx384m" -Dtest=ReaperMetricsIT -Dgrim.reaper.min=${GRIM_MIN} -Dgrim.reaper.max=${GRIM_MAX} -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx384m" -Dtest=ReaperCassandraIT -Dgrim.reaper.min=${GRIM_MIN} -Dgrim.reaper.max=${GRIM_MAX} $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx384m" -Dtest=ReaperMetricsIT -Dgrim.reaper.min=${GRIM_MIN} -Dgrim.reaper.max=${GRIM_MAX} $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
                 ;;
             *)
                 echo "Skipping, no actions for STORAGE_TYPE=${STORAGE_TYPE}."
@@ -118,8 +129,9 @@ case "${TEST_TYPE}" in
             # Stop CCM now so we can restart it with Management API
             ccm stop
             # Start Management API
-            MGMT_API_LOG_DIR=/tmp/log/cassandra1 bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --db-socket=/tmp/db1.sock --host=unix:///tmp/mgmtapi1.sock --host=http://127.0.0.1:8080 --db-home=`dirname ~/.ccm/test/node1`/node1 &'
-            MGMT_API_LOG_DIR=/tmp/log/cassandra2 bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --db-socket=/tmp/db2.sock --host=unix:///tmp/mgmtapi2.sock --host=http://127.0.0.2:8080 --db-home=`dirname ~/.ccm/test/node2`/node2 &'
+            CERT_DIR=/home/runner/work/cassandra-reaper/cassandra-reaper/.github/files
+            MGMT_API_LOG_DIR=/tmp/log/cassandra1 MGMT_API_TLS_CA_CERT_FILE=$CERT_DIR/mutual_auth_ca.pem MGMT_API_TLS_CERT_FILE=$CERT_DIR/mutual_auth_server.crt MGMT_API_TLS_KEY_FILE=$CERT_DIR/mutual_auth_server.key bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --tlscacert=$MGMT_API_TLS_CA_CERT_FILE --tlscert=$MGMT_API_TLS_CERT_FILE --tlskey=$MGMT_API_TLS_KEY_FILE --db-socket=/tmp/db1.sock --host=unix:///tmp/mgmtapi1.sock --host=http://127.0.0.1:8080 --db-home=`dirname ~/.ccm/test/node1`/node1 > /tmp/log/cassandra1/mgmt.out 2>&1 &'
+            MGMT_API_LOG_DIR=/tmp/log/cassandra2 MGMT_API_TLS_CA_CERT_FILE=$CERT_DIR/mutual_auth_ca.pem MGMT_API_TLS_CERT_FILE=$CERT_DIR/mutual_auth_server.crt MGMT_API_TLS_KEY_FILE=$CERT_DIR/mutual_auth_server.key bash -c 'nohup java -jar /tmp/datastax-mgmtapi-server.jar --tlscacert=$MGMT_API_TLS_CA_CERT_FILE --tlscert=$MGMT_API_TLS_CERT_FILE --tlskey=$MGMT_API_TLS_KEY_FILE --db-socket=/tmp/db2.sock --host=unix:///tmp/mgmtapi2.sock --host=http://127.0.0.2:8080 --db-home=`dirname ~/.ccm/test/node2`/node2 > /tmp/log/cassandra2/mgmt.out 2>&1 &'
             # wait for Cassandra to be ready
             for i in `seq 1 30` ; do
                 # keep curl from exiting with non-zero
@@ -134,8 +146,8 @@ case "${TEST_TYPE}" in
                 fi
                 sleep 5
             done
-            # Reaper requires JDK11 for compilation
-            set_java_home 11
+            # Reaper requires JDK17 for compilation
+            set_java_home 17
             case "${STORAGE_TYPE}" in
                 "")
                     echo "ERROR: Environment variable STORAGE_TYPE is unspecified."
@@ -144,7 +156,7 @@ case "${TEST_TYPE}" in
                 "ccm")
                     mvn -B package -DskipTests
                     ccm node1 cqlsh -e "DROP KEYSPACE reaper_db" || true
-                    mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx256m"  -Dtest=ReaperHttpIT -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                    mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx256m"  -Dtest=ReaperHttpIT $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
                     ;;
                 *)
                     echo "Skipping, no actions for STORAGE_TYPE=${STORAGE_TYPE}."
@@ -160,7 +172,7 @@ case "${TEST_TYPE}" in
         ccm start -v --no-wait --skip-wait-other-notice || true
         sleep 30
         ccm status
-        set_java_home 11
+        set_java_home 17
         case "${STORAGE_TYPE}" in
             "")
                 echo "ERROR: Environment variable STORAGE_TYPE is unspecified."
@@ -168,7 +180,7 @@ case "${TEST_TYPE}" in
                 ;;
             "cassandra")
                 ccm node1 cqlsh -e "DROP KEYSPACE reaper_db" || true
-                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx512m" -Dtest=ReaperCassandraSidecarIT -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx512m" -Dtest=ReaperCassandraSidecarIT $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
                 ;;
             *)
                 echo "Skipping, no actions for STORAGE_TYPE=${STORAGE_TYPE}."
@@ -184,7 +196,7 @@ case "${TEST_TYPE}" in
         ccm start -v --no-wait --skip-wait-other-notice || true
         sleep 30
         ccm status
-        set_java_home 11
+        set_java_home 17
         case "${STORAGE_TYPE}" in
             "")
                 echo "ERROR: Environment variable STORAGE_TYPE is unspecified."
@@ -192,7 +204,7 @@ case "${TEST_TYPE}" in
                 ;;
             "cassandra")
                 ccm node1 cqlsh -e "DROP KEYSPACE reaper_db" || true
-                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx512m" -Dtest=ReaperCassandraEachIT -Dcucumber.options="$CUCUMBER_OPTIONS" org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
+                mvn -B org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:prepare-agent surefire:test -DsurefireArgLine="-Xmx512m" -Dtest=ReaperCassandraEachIT $CUCUMBER_FILTER_TAGS org.jacoco:jacoco-maven-plugin:${JACOCO_VERSION}:report
                 ;;
             *)
                 echo "Skipping, no actions for STORAGE_TYPE=${STORAGE_TYPE}."
@@ -208,7 +220,7 @@ case "${TEST_TYPE}" in
         sleep 30
         ccm status
         ccm node1 cqlsh -e "DROP KEYSPACE reaper_db" || true
-        set_java_home 11
+        set_java_home 17
         mvn package -B -DskipTests -Pintegration-upgrade-tests
         MAVEN_OPTS="-Xmx384m" mvn -B surefire:test -Dtest=ReaperCassandraIT
         ;;
@@ -216,33 +228,74 @@ case "${TEST_TYPE}" in
         sudo apt-get update
         sudo apt-get install jq -y
         mvn -B package -DskipTests
-        docker-compose -f ./src/packaging/docker-build/docker-compose.yml build
-        docker-compose -f ./src/packaging/docker-build/docker-compose.yml run build
         VERSION=$(printf 'VER\t${project.version}' | mvn help:evaluate | grep '^VER' | cut -f2)
-        docker build --build-arg SHADED_JAR=src/server/target/cassandra-reaper-${VERSION}.jar -f src/server/src/main/docker/Dockerfile -t cassandra-reaper:latest .
+        docker build --build-arg SHADED_JAR=src/server/target/cassandra-reaper-${VERSION}.jar -f src/server/src/main/docker/${DOCKERFILE} -t thelastpickle/cassandra-reaper:ci-build .
         docker images
 
-        # Clear out Cassandra data before starting a new cluster
-        sudo rm -vfr ./src/packaging/data/
+        # start a kind cluster with 2 worker nodes
+        cat <<EOF > /tmp/kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+EOF
 
-        docker-compose -f ./src/packaging/docker-compose.yml up -d cassandra
-        sleep 30 && docker-compose -f ./src/packaging/docker-compose.yml run cqlsh-initialize-reaper_db
-        sleep 10 && docker-compose -f ./src/packaging/docker-compose.yml up -d reaper
-        docker ps -a
+        kind delete cluster --name reaper
+        kind create cluster --name reaper --config /tmp/kind-config.yaml
 
-        # requests python package is needed to use spreaper
-        pip install requests
-        mkdir -p ~/.reaper
-        echo "admin" > ~/.reaper/credentials
-        sleep 30 && src/packaging/bin/spreaper login admin
-        src/packaging/bin/spreaper add-cluster $(docker-compose -f ./src/packaging/docker-compose.yml run nodetool status | grep UN | tr -s ' ' | cut -d' ' -f2) 7199 > cluster.json
-        cat cluster.json
-        cluster_name=$(cat cluster.json|grep -v "#" | jq -r '.name')
-        if [[ "$cluster_name" != "reaper-cluster" ]]; then
-            echo "Failed registering cluster in Reaper running in Docker"
+        kind load docker-image thelastpickle/cassandra-reaper:ci-build --name reaper
+
+        # Install cert-manager and cass-operator
+        kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.17.0/cert-manager.yaml
+        kubectl wait --for=condition=available --timeout=600s deployment/cert-manager -n cert-manager
+        kubectl wait --for=condition=available --timeout=600s deployment/cert-manager-webhook -n cert-manager
+        kubectl apply --force-conflicts --server-side -k github.com/k8ssandra/cass-operator/config/deployments/default?ref=v1.23.2
+        kubectl wait --for=condition=available --timeout=600s deployment/cass-operator-controller-manager -n cass-operator
+        if [ $? -ne 0 ]; then
+            echo "cass-operator failed to be ready"
             exit 1
         fi
-        sleep 5 && docker-compose -f ./src/packaging/docker-compose.yml down
+
+        # Create CassandraDatacenter
+        kubectl apply -f .github/files/reaper-cql-secret.yaml
+        kubectl apply -f .github/files/reaper-ui-secret.yaml
+        kubectl apply -f .github/files/cassdc.yaml
+
+        # Wait for the Cassandra statefulset to be created
+        for i in `seq 1 30` ; do
+            DC_STS=`kubectl get sts/test-dc1-r1-sts -n cass-operator | wc -l`
+            if [ "${DC_STS}" != "0" ]
+            then
+                echo "Cassandra statefulset created successfully"
+                break
+            else
+                echo "Cassandra statefulset not created yet. Sleeping.... $i"
+            fi
+            sleep 10
+        done
+
+        # Wait for the Cassandra statefulset to be ready
+        kubectl rollout status --watch --timeout=600s statefulset/test-dc1-r1-sts -n cass-operator
+        if [ $? -ne 0 ]; then
+            echo "Cassandra statefulset failed to be ready"
+            exit 1
+        fi
+
+        # Create the reaper_db keyspace
+        REAPER_USERNAME=$(kubectl get secret reaper-cql-secret -n cass-operator -o jsonpath='{.data.username}' | base64 --decode | xargs)
+        REAPER_PASSWORD=$(kubectl get secret reaper-cql-secret -n cass-operator -o jsonpath='{.data.password}' | base64 --decode | xargs)
+        kubectl exec -it test-dc1-r1-sts-0 -n cass-operator -- cqlsh -u REAPER_USERNAME -p REAPER_PASSWORD -e "CREATE KEYSPACE reaper_db WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};"
+        # Create Reaper deployment
+        kubectl apply -f .github/files/reaper.yaml
+        # Wait for the Reaper deployment to be ready
+        kubectl rollout status --watch --timeout=600s deployment/test-dc1-reaper -n cass-operator
+        if [ $? -ne 0 ]; then
+            echo "Reaper deployment failed to be ready"
+            exit 1
+        fi
+        echo "Reaper deployment created successfully"
         ;;
     *)
         echo "Skipping, no actions for TEST_TYPE=${TEST_TYPE}."

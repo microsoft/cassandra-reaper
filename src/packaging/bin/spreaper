@@ -233,6 +233,9 @@ def _arguments_for_repair_and_schedule(parser):
     parser.add_argument("--incremental", default="false",
                         help=("Incremental repair (true or false), "
                               "or use the configured default if not given (false)"))
+    parser.add_argument("--subrange-incremental", default="false",
+                        help=("Subrange incremental repair (true or false), "
+                              "or use the configured default if not given (false)"))
     parser.add_argument("--datacenters", default=None,
                         help=("a comma separated list of datacenters to repair (do not use spaces after commas). "
                               "Cannot be used in conjunction with --nodes."))
@@ -490,14 +493,10 @@ class ReaperCLI(object):
         payload = {'username':args.username, 'password':password, 'rememberMe':False}
         reply = reaper.postFormData("login", 
                             payload=payload)
-        # Use shiro's session id to request a JWT
-        COOKIES["JSESSIONID"] = reply.cookies["JSESSIONID"]
-        jwt = reaper.get("jwt")
+        auth_content = json.loads(reply.content)
+        jwt = auth_content['token']
         printq("You are now authenticated to Reaper.")
         ReaperCLI.save_jwt(jwt)
-
-        # remove the session id and set the auth header with the JWT
-        COOKIES.pop("JSESSIONID", None)
 
     def ping(self):
         reaper, args = ReaperCLI.prepare_reaper(
@@ -734,6 +733,7 @@ class ReaperCLI(object):
                                 repairParallelism=args.repair_parallelism,
                                 intensity=args.intensity,
                                 incrementalRepair=args.incremental, 
+                                subrangeIncrementalRepair=args.subrange_incremental,
                                 nodes=args.nodes,
                                 datacenters=args.datacenters,
                                 blacklistedTables=args.blacklisted_tables,
@@ -755,6 +755,7 @@ class ReaperCLI(object):
                                 repairParallelism=args.repair_parallelism,
                                 intensity=args.intensity,
                                 incrementalRepair=args.incremental, 
+                                subrangeIncrementalRepair=args.subrange_incremental,
                                 nodes=args.nodes,
                                 datacenters=args.datacenters,
                                 blacklistedTables=args.blacklisted_tables,
@@ -797,6 +798,7 @@ class ReaperCLI(object):
                                 scheduleDaysBetween=args.schedule_days_between,
                                 scheduleTriggerTime=args.schedule_trigger_time,
                                 incrementalRepair=args.incremental, 
+                                subrangeIncrementalRepair=args.subrange_incremental,
                                 nodes=args.nodes,
                                 datacenters=args.datacenters,
                                 blacklistedTables=args.blacklisted_tables,
@@ -818,6 +820,7 @@ class ReaperCLI(object):
                                 scheduleDaysBetween=args.schedule_days_between,
                                 scheduleTriggerTime=args.schedule_trigger_time,
                                 incrementalRepair=args.incremental, 
+                                subrangeIncrementalRepair=args.subrange_incremental,
                                 nodes=args.nodes,
                                 datacenters=args.datacenters,
                                 blacklistedTables=args.blacklisted_tables,
